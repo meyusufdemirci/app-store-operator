@@ -92,7 +92,7 @@ async function searchAppStore(keyword, country) {
 async function scrapeSensorTower(page, appId, country) {
   await page.goto(
     `https://app.sensortower.com/overview/${appId}?country=${country.toUpperCase()}`,
-    { waitUntil: "domcontentloaded", timeout: 30000 }
+    { waitUntil: "load", timeout: 30000 }
   );
 
   // If redirected to a login/auth page, wait for the user to log in (up to 2 min)
@@ -112,19 +112,20 @@ async function scrapeSensorTower(page, appId, country) {
     // Re-navigate to the target page after login
     await page.goto(
       `https://app.sensortower.com/overview/${appId}?country=${country.toUpperCase()}`,
-      { waitUntil: "domcontentloaded", timeout: 30000 }
+      { waitUntil: "load", timeout: 30000 }
     );
   }
 
-  // Wait until the page has rendered meaningful data (Downloads or Revenue label visible),
-  // falling back to a hard 8-second cap if the selector never appears (e.g. paywalled view).
+  // Wait until the page has rendered meaningful data (Downloads or Revenue label visible).
+  // SensorTower loads data via async API calls after the initial page render, so we give
+  // it up to 20 seconds before falling back to a hard 12-second cap (e.g. paywalled view).
   try {
     await page.waitForFunction(
       () => document.body.innerText.includes("Downloads") || document.body.innerText.includes("Revenue"),
-      { timeout: 8000 }
+      { timeout: 20000 }
     );
   } catch {
-    await page.waitForTimeout(8000);
+    await page.waitForTimeout(12000);
   }
 
   const text = await page.evaluate(() => document.body.innerText);
