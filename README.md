@@ -33,7 +33,13 @@ Finds the top 3 apps for a keyword and returns a full metrics report for each.
 
 ### As an MCP server (Claude Desktop / Claude Code)
 
-Add to your MCP config:
+**Claude Code** — run this command once:
+
+```bash
+claude mcp add --transport stdio app-store-operator -- npx -y app-store-operator
+```
+
+**Claude Desktop** — add to your MCP config:
 
 ```json
 {
