@@ -1,5 +1,13 @@
 # App Store Operator
 
+<p align="center">
+  <a href="https://www.npmjs.com/package/app-store-operator"><img src="https://img.shields.io/npm/v/app-store-operator?color=6366f1&label=npm" alt="npm"></a>
+  <a href="https://www.npmjs.com/package/app-store-operator"><img src="https://img.shields.io/npm/dm/app-store-operator?color=818cf8&label=downloads" alt="downloads"></a>
+  <a href="#license"><img src="https://img.shields.io/badge/license-MIT-green" alt="license"></a>
+  <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%E2%89%A518-brightgreen" alt="node"></a>
+  <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-compatible-6366f1" alt="MCP"></a>
+</p>
+
 An MCP (Model Context Protocol) server that provides App Store competitive research tools for iOS app developers.
 
 ## What it does
