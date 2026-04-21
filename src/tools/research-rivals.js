@@ -22,8 +22,6 @@ https://apps.apple.com/{store}/iphone/search?term={keyword}
 Extract the first 3 app results including:
 - App name
 - App ID (numeric only, e.g. \`6455378213\` — strip the \`id\` prefix)
-- App icon image URL (the \`src\` of the app icon \`<img>\` tag in the search results — typically a \`*.mzstatic.com\` URL ending in \`jpg\` or \`png\`)
-
 ## Step 3 — Generate URLs
 
 For each app, generate:
@@ -86,7 +84,6 @@ async function searchAppStore(keyword, country) {
   return data.results.slice(0, 3).map((app) => ({
     name: app.trackName,
     id: String(app.trackId),
-    iconUrl: app.artworkUrl512 || app.artworkUrl100,
     storeUrl: `https://apps.apple.com/${country}/app/id${app.trackId}`,
     sensorTowerUrl: `https://app.sensortower.com/overview/${app.trackId}`,
   }));
