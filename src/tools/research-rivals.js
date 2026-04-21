@@ -6,11 +6,10 @@ const DESCRIPTION = `Search the App Store for a given keyword in a specific coun
 
 The following inputs are **required**. Check if each was provided with the command. For any that are missing, ask the user before proceeding:
 
-- **App**: the name of the app this research is being done for — i.e. the app that owns this competitive analysis (e.g. \`Mindflow\`, \`Nefarius Health\`)
 - **Keyword**: the search term to look up (e.g. \`psikoloji\`, \`meditation\`)
 - **Store**: the two-letter country code for the target store (e.g. \`tr\`, \`us\`, \`gb\`)
 
-Only proceed to Step 2 once all three inputs are confirmed.
+Only proceed to Step 2 once both inputs are confirmed.
 
 ## Step 2 — Search the App Store
 
@@ -137,7 +136,7 @@ const EMPTY_ST = {
   publisherCountry: "N/A", adsActive: "N/A", rating: "N/A", ratingCount: "N/A",
 };
 
-export async function execute({ app, keyword, country }) {
+export async function execute({ keyword, country }) {
   const apps = await searchAppStore(keyword, country);
 
   const rows = await Promise.all(
@@ -179,10 +178,6 @@ export default {
     inputSchema: {
       type: "object",
       properties: {
-        app: {
-          type: "string",
-          description: "The name of the app this research is being done for (e.g. Mindflow, Nefarius Health)",
-        },
         keyword: {
           type: "string",
           description: "The keyword to search in the App Store (e.g. psikoloji, meditation)",
@@ -192,7 +187,7 @@ export default {
           description: "Two-letter App Store country code (e.g. us, gb, tr)",
         },
       },
-      required: ["app", "keyword", "country"],
+      required: ["keyword", "country"],
     },
   },
   execute,

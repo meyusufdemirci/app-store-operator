@@ -14,7 +14,6 @@ Finds the top 3 apps for a keyword and returns a full metrics report for each.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `app` | string | Name of your app (for context) |
 | `keyword` | string | Search term to look up (e.g. `meditation`, `psikoloji`) |
 | `country` | string | Two-letter country code (e.g. `us`, `tr`, `gb`) |
 
