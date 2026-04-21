@@ -2,6 +2,7 @@ import { chromium } from "playwright";
 import { homedir } from "os";
 import { join } from "path";
 import { execSync } from "child_process";
+import { getCached, setCached } from "../cache.js";
 
 const PROFILE_DIR = join(homedir(), ".app-store-operator", "profile");
 
@@ -191,6 +192,11 @@ async function launchContext() {
 }
 
 export async function execute({ keyword, country }) {
+  const cached = getCached(keyword, country);
+  if (cached) {
+    return JSON.stringify({ ...cached, cached: true }, null, 2);
+  }
+
   const apps = await searchAppStore(keyword, country);
 
   // Persistent context so the SensorTower session survives across runs.
@@ -212,7 +218,9 @@ export async function execute({ keyword, country }) {
       rows.push(buildAppProfile(i + 1, apps[i], st));
     }
 
-    return JSON.stringify({ keyword, country, fetchedAt: new Date().toISOString(), apps: rows }, null, 2);
+    const result = { keyword, country, fetchedAt: new Date().toISOString(), apps: rows };
+    setCached(keyword, country, result);
+    return JSON.stringify(result, null, 2);
   } finally {
     await context.close();
   }
