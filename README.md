@@ -28,15 +28,6 @@ Finds the top 3 apps for a keyword and returns a full metrics report for each.
 ## Requirements
 
 - Node.js v18+
-- npm
-
-## Installation
-
-```bash
-npm install
-```
-
-Playwright will install its Chromium browser dependency automatically.
 
 ## Usage
 
@@ -48,18 +39,14 @@ Add to your MCP config:
 {
   "mcpServers": {
     "app-store-operator": {
-      "command": "node",
-      "args": ["/path/to/app-store-operator/src/index.js"]
+      "command": "npx",
+      "args": ["app-store-operator"]
     }
   }
 }
 ```
 
-### Run directly
-
-```bash
-npm start
-```
+No installation step needed — `npx` fetches and runs the package automatically.
 
 The server communicates over stdio and is designed to be invoked by an MCP client.
 
