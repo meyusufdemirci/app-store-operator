@@ -36,7 +36,7 @@ Finds the top 3 apps for a keyword and returns a full metrics report for each.
 **Claude Code** — run this command once:
 
 ```bash
-claude mcp add --transport stdio app-store-operator -- npx -y app-store-operator
+claude mcp add --transport stdio app-store-operator -- npx -y app-store-operator@latest
 ```
 
 **Claude Desktop** — add to your MCP config:
@@ -46,7 +46,7 @@ claude mcp add --transport stdio app-store-operator -- npx -y app-store-operator
   "mcpServers": {
     "app-store-operator": {
       "command": "npx",
-      "args": ["app-store-operator"]
+      "args": ["app-store-operator@latest"]
     }
   }
 }
