@@ -4,8 +4,10 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import researchRivals from "./tools/research-rivals.js";
+import searchAppStore from "./tools/search-app-store.js";
+import getAppDetails from "./tools/get-app-details.js";
 
-const tools = [researchRivals];
+const tools = [researchRivals, searchAppStore, getAppDetails];
 const toolMap = Object.fromEntries(tools.map((t) => [t.tool.name, t]));
 
 const server = new Server(

@@ -1,33 +1,20 @@
-import { chromium } from "playwright";
-import { homedir } from "os";
-import { join } from "path";
-import { execSync } from "child_process";
+import { searchAppStore, scrapeSensorTower, launchContext, buildAppProfile, EMPTY_ST } from "../shared.js";
 import { getCached, setCached } from "../cache.js";
 
-const PROFILE_DIR = join(homedir(), ".app-store-operator", "profile");
+const DESCRIPTION = `Search the App Store for a keyword and fetch SensorTower analytics for the top results — all in one call. Results are cached for 24 hours so repeat queries are instant.
 
-const DESCRIPTION = `Use this tool when the user wants to research rival or competitor apps in the App Store. Trigger phrases include: "rival research", "research rivals", "competitor analysis", "find competing apps", "check competitors", "competitive analysis", "what apps compete with", "App Store competitors", "rivals for keyword", or any variation of researching competing iOS apps.
+Use this for a quick competitive overview when you want everything in one step.
+Use \`search_app_store\` + \`get_app_details\` separately when you need more than 3 results, a custom limit, or selective fetching of specific apps.
 
-This tool searches the App Store for a given keyword in a specific country store and returns the top 3 apps with structured JSON data including SensorTower analytics.
+Trigger phrases: "rival research", "research rivals", "competitor analysis", "find competing apps", "check competitors", "what apps compete with", "App Store competitors", "rivals for keyword".
 
-## Step 1 — Gather inputs
-
-The following inputs are **required**. Check if each was provided with the command. For any that are missing, ask the user before proceeding:
-
-- **Keyword**: the search term to look up (e.g. \`psikoloji\`, \`meditation\`)
-- **Store**: the two-letter country code for the target store (e.g. \`tr\`, \`us\`, \`gb\`)
-
-Only proceed to Step 2 once both inputs are confirmed.
-
-## Step 2 — Execute
-
-Call this tool with the keyword and country. It returns a JSON object:
-
+Returns JSON:
 \`\`\`json
 {
   "keyword": "meditation",
   "country": "us",
   "fetchedAt": "2026-04-21T10:00:00.000Z",
+  "cached": false,
   "apps": [
     {
       "rank": 1,
@@ -51,11 +38,9 @@ Call this tool with the keyword and country. It returns a JSON object:
 }
 \`\`\`
 
-Fields missing or gated behind a paywall will be \`"N/A"\`.
+Fields missing or gated behind a paywall will be \`"N/A"\`. When \`cached\` is \`true\`, the data was served from the local cache and no scraping occurred.
 
-## Step 3 — Render
-
-Present the results as a clean report using the JSON fields. For each app:
+Present results as a clean report for each app:
 
 ---
 
@@ -75,130 +60,13 @@ Present the results as a clean report using the JSON fields. For each app:
 - Publisher Country: {publisherCountry}
 - Advertised on Any Network: {advertisingNetworks}`;
 
-async function searchAppStore(keyword, country) {
-  const url = `https://itunes.apple.com/search?term=${encodeURIComponent(keyword)}&country=${country}&entity=software&limit=3`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`App Store search failed: ${res.status}`);
-  const data = await res.json();
-
-  return data.results.slice(0, 3).map((app) => ({
-    name: app.trackName,
-    id: String(app.trackId),
-    storeUrl: `https://apps.apple.com/${country}/app/id${app.trackId}`,
-    sensorTowerUrl: `https://app.sensortower.com/overview/${app.trackId}`,
-  }));
-}
-
-async function scrapeSensorTower(page, appId, country) {
-  await page.goto(
-    `https://app.sensortower.com/overview/${appId}?country=${country.toUpperCase()}`,
-    { waitUntil: "load", timeout: 30000 }
-  );
-
-  // If redirected to a login/auth page, wait for the user to log in (up to 2 min)
-  const currentUrl = page.url();
-  if (
-    currentUrl.includes("login") ||
-    currentUrl.includes("signin") ||
-    currentUrl.includes("accounts")
-  ) {
-    await page.waitForURL(
-      (u) =>
-        !u.includes("login") &&
-        !u.includes("signin") &&
-        !u.includes("accounts"),
-      { timeout: 120000 }
-    );
-    // Re-navigate to the target page after login
-    await page.goto(
-      `https://app.sensortower.com/overview/${appId}?country=${country.toUpperCase()}`,
-      { waitUntil: "load", timeout: 30000 }
-    );
-  }
-
-  // Wait until the page has rendered meaningful data (Downloads or Revenue label visible).
-  // SensorTower loads data via async API calls after the initial page render, so we give
-  // it up to 20 seconds before falling back to a hard 12-second cap (e.g. paywalled view).
-  try {
-    await page.waitForFunction(
-      () => document.body.innerText.includes("Downloads") || document.body.innerText.includes("Revenue"),
-      { timeout: 20000 }
-    );
-  } catch {
-    await page.waitForTimeout(12000);
-  }
-
-  const text = await page.evaluate(() => document.body.innerText);
-
-  const extract = (pattern) => {
-    const match = text.match(pattern);
-    return match ? match[1].trim() : "N/A";
-  };
-
-  return {
-    downloads: extract(/Downloads[^\n]*\n([^\n]+)/i),
-    revenue: extract(/Revenue[^\n]*\n([^\n]+)/i),
-    publisher: extract(/Publisher\s*\n([^\n]+)/i),
-    categories: extract(/Categor(?:y|ies)\s*\n([^\n]+)/i),
-    topMarkets: extract(/Top (?:Markets|Countries)\s*\n([^\n]+)/i),
-    releaseDate: extract(/(?:Worldwide )?Release Date\s*\n([^\n]+)/i),
-    lastUpdated: extract(/(?:Last )?Updated\s*\n([^\n]+)/i),
-    languages: extract(/Languages?\s*\n([^\n]+)/i),
-    inAppPurchases: extract(/In-App Purchases?\s*\n([^\n]+)/i),
-    publisherCountry: extract(/Publisher Country\s*\n([^\n]+)/i),
-    adsActive: extract(/(?:Advertis|Ad Network)[^\n]*\n([^\n]+)/i),
-    rating: extract(/(\d+\.?\d*)\s*(?:out of 5|★)/i),
-    ratingCount: extract(/(\d[\d,]+)\s*(?:ratings?|reviews?)/i),
-  };
-}
-
-const EMPTY_ST = {
-  downloads: "N/A", revenue: "N/A", publisher: "N/A",
-  categories: "N/A", topMarkets: "N/A", releaseDate: "N/A",
-  lastUpdated: "N/A", languages: "N/A", inAppPurchases: "N/A",
-  publisherCountry: "N/A", adsActive: "N/A", rating: "N/A", ratingCount: "N/A",
-};
-
-function buildAppProfile(rank, entry, st) {
-  return {
-    rank,
-    name: entry.name,
-    appStoreUrl: entry.storeUrl,
-    sensorTowerUrl: entry.sensorTowerUrl,
-    downloads: st.downloads,
-    revenue: st.revenue,
-    rating: { score: st.rating, count: st.ratingCount },
-    publisher: st.publisher,
-    categories: st.categories,
-    topMarkets: st.topMarkets,
-    releaseDate: st.releaseDate,
-    lastUpdated: st.lastUpdated,
-    languages: st.languages,
-    inAppPurchases: st.inAppPurchases,
-    publisherCountry: st.publisherCountry,
-    advertisingNetworks: st.adsActive,
-  };
-}
-
-async function launchContext() {
-  try {
-    return await chromium.launchPersistentContext(PROFILE_DIR, { headless: false });
-  } catch (err) {
-    if (/Executable doesn't exist|playwright install/i.test(err.message)) {
-      execSync("npx playwright install chromium", { stdio: "pipe" });
-      return await chromium.launchPersistentContext(PROFILE_DIR, { headless: false });
-    }
-    throw err;
-  }
-}
-
 export async function execute({ keyword, country }) {
   const cached = getCached(keyword, country);
   if (cached) {
     return JSON.stringify({ ...cached, cached: true }, null, 2);
   }
 
-  const apps = await searchAppStore(keyword, country);
+  const apps = await searchAppStore(keyword, country, 3);
 
   // Persistent context so the SensorTower session survives across runs.
   // headless: false lets the user log in on first use; the session is then
@@ -219,7 +87,7 @@ export async function execute({ keyword, country }) {
       rows.push(buildAppProfile(i + 1, apps[i], st));
     }
 
-    const result = { keyword, country, fetchedAt: new Date().toISOString(), apps: rows };
+    const result = { keyword, country, fetchedAt: new Date().toISOString(), cached: false, apps: rows };
     setCached(keyword, country, result);
     return JSON.stringify(result, null, 2);
   } finally {
