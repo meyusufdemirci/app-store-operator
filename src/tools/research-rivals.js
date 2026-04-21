@@ -1,6 +1,7 @@
 import { chromium } from "playwright";
 import { homedir } from "os";
 import { join } from "path";
+import { execSync } from "child_process";
 
 const PROFILE_DIR = join(homedir(), ".app-store-operator", "profile");
 
@@ -175,15 +176,25 @@ function formatApp(index, entry, st) {
   ].join("\n");
 }
 
+async function launchContext() {
+  try {
+    return await chromium.launchPersistentContext(PROFILE_DIR, { headless: false });
+  } catch (err) {
+    if (/Executable doesn't exist|playwright install/i.test(err.message)) {
+      execSync("npx playwright install chromium", { stdio: "pipe" });
+      return await chromium.launchPersistentContext(PROFILE_DIR, { headless: false });
+    }
+    throw err;
+  }
+}
+
 export async function execute({ keyword, country }) {
   const apps = await searchAppStore(keyword, country);
 
   // Persistent context so the SensorTower session survives across runs.
   // headless: false lets the user log in on first use; the session is then
   // saved to PROFILE_DIR and reused automatically on every subsequent call.
-  const context = await chromium.launchPersistentContext(PROFILE_DIR, {
-    headless: false,
-  });
+  const context = await launchContext();
 
   try {
     const page = await context.newPage();
