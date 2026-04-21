@@ -1,17 +1,18 @@
 {
   "name": "app-store-operator",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "MCP server for iOS App Store operations — rival research, ASO, and more",
   "type": "module",
   "bin": {
     "app-store-operator": "./src/index.js"
   },
   "files": [
-    "src"
+    "src",
+    "scripts"
   ],
   "scripts": {
     "start": "node src/index.js",
-    "postinstall": "playwright install chromium"
+    "postinstall": "node scripts/postinstall.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.10.2",
