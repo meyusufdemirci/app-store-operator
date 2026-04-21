@@ -124,7 +124,17 @@ async function scrapeSensorTower(page, appId, country) {
     );
   }
 
-  await page.waitForTimeout(3000);
+  // Wait until the page has rendered meaningful data (Downloads or Revenue label visible),
+  // falling back to a hard 8-second cap if the selector never appears (e.g. paywalled view).
+  try {
+    await page.waitForFunction(
+      () => document.body.innerText.includes("Downloads") || document.body.innerText.includes("Revenue"),
+      { timeout: 8000 }
+    );
+  } catch {
+    await page.waitForTimeout(8000);
+  }
+
   const text = await page.evaluate(() => document.body.innerText);
 
   const extract = (pattern) => {
