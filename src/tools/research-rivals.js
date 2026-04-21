@@ -1,4 +1,8 @@
 import { chromium } from "playwright";
+import { homedir } from "os";
+import { join } from "path";
+
+const PROFILE_DIR = join(homedir(), ".app-store-operator", "profile");
 
 const DESCRIPTION = `Search the App Store for a given keyword in a specific country store and return the top app names with their URLs, SensorTower data, and ratings.
 
@@ -22,6 +26,7 @@ https://apps.apple.com/{store}/iphone/search?term={keyword}
 Extract the first 3 app results including:
 - App name
 - App ID (numeric only, e.g. \`6455378213\` — strip the \`id\` prefix)
+
 ## Step 3 — Generate URLs
 
 For each app, generate:
@@ -89,41 +94,56 @@ async function searchAppStore(keyword, country) {
   }));
 }
 
-async function fetchSensorTowerData(appId, country) {
-  const browser = await chromium.launch({ headless: true });
-  try {
-    const page = await browser.newPage();
+async function scrapeSensorTower(page, appId, country) {
+  await page.goto(
+    `https://app.sensortower.com/overview/${appId}?country=${country.toUpperCase()}`,
+    { waitUntil: "domcontentloaded", timeout: 30000 }
+  );
+
+  // If redirected to a login/auth page, wait for the user to log in (up to 2 min)
+  const currentUrl = page.url();
+  if (
+    currentUrl.includes("login") ||
+    currentUrl.includes("signin") ||
+    currentUrl.includes("accounts")
+  ) {
+    await page.waitForURL(
+      (u) =>
+        !u.includes("login") &&
+        !u.includes("signin") &&
+        !u.includes("accounts"),
+      { timeout: 120000 }
+    );
+    // Re-navigate to the target page after login
     await page.goto(
       `https://app.sensortower.com/overview/${appId}?country=${country.toUpperCase()}`,
       { waitUntil: "domcontentloaded", timeout: 30000 }
     );
-    await page.waitForTimeout(3000);
-
-    const text = await page.evaluate(() => document.body.innerText);
-
-    const extract = (pattern) => {
-      const match = text.match(pattern);
-      return match ? match[1].trim() : "N/A";
-    };
-
-    return {
-      downloads: extract(/Downloads[^\n]*\n([^\n]+)/i),
-      revenue: extract(/Revenue[^\n]*\n([^\n]+)/i),
-      publisher: extract(/Publisher\s*\n([^\n]+)/i),
-      categories: extract(/Categor(?:y|ies)\s*\n([^\n]+)/i),
-      topMarkets: extract(/Top (?:Markets|Countries)\s*\n([^\n]+)/i),
-      releaseDate: extract(/(?:Worldwide )?Release Date\s*\n([^\n]+)/i),
-      lastUpdated: extract(/(?:Last )?Updated\s*\n([^\n]+)/i),
-      languages: extract(/Languages?\s*\n([^\n]+)/i),
-      inAppPurchases: extract(/In-App Purchases?\s*\n([^\n]+)/i),
-      publisherCountry: extract(/Publisher Country\s*\n([^\n]+)/i),
-      adsActive: extract(/(?:Advertis|Ad Network)[^\n]*\n([^\n]+)/i),
-      rating: extract(/(\d+\.?\d*)\s*(?:out of 5|★)/i),
-      ratingCount: extract(/(\d[\d,]+)\s*(?:ratings?|reviews?)/i),
-    };
-  } finally {
-    await browser.close();
   }
+
+  await page.waitForTimeout(3000);
+  const text = await page.evaluate(() => document.body.innerText);
+
+  const extract = (pattern) => {
+    const match = text.match(pattern);
+    return match ? match[1].trim() : "N/A";
+  };
+
+  return {
+    downloads: extract(/Downloads[^\n]*\n([^\n]+)/i),
+    revenue: extract(/Revenue[^\n]*\n([^\n]+)/i),
+    publisher: extract(/Publisher\s*\n([^\n]+)/i),
+    categories: extract(/Categor(?:y|ies)\s*\n([^\n]+)/i),
+    topMarkets: extract(/Top (?:Markets|Countries)\s*\n([^\n]+)/i),
+    releaseDate: extract(/(?:Worldwide )?Release Date\s*\n([^\n]+)/i),
+    lastUpdated: extract(/(?:Last )?Updated\s*\n([^\n]+)/i),
+    languages: extract(/Languages?\s*\n([^\n]+)/i),
+    inAppPurchases: extract(/In-App Purchases?\s*\n([^\n]+)/i),
+    publisherCountry: extract(/Publisher Country\s*\n([^\n]+)/i),
+    adsActive: extract(/(?:Advertis|Ad Network)[^\n]*\n([^\n]+)/i),
+    rating: extract(/(\d+\.?\d*)\s*(?:out of 5|★)/i),
+    ratingCount: extract(/(\d[\d,]+)\s*(?:ratings?|reviews?)/i),
+  };
 }
 
 const EMPTY_ST = {
@@ -133,39 +153,54 @@ const EMPTY_ST = {
   publisherCountry: "N/A", adsActive: "N/A", rating: "N/A", ratingCount: "N/A",
 };
 
+function formatApp(index, entry, st) {
+  return [
+    `**#${index + 1} — ${entry.name}**`,
+    `- App Store: ${entry.storeUrl}`,
+    `- SensorTower: ${entry.sensorTowerUrl}`,
+    `- Downloads: ${st.downloads}`,
+    `- Revenue: ${st.revenue}`,
+    `- Rating: ${st.rating} (${st.ratingCount} ratings)`,
+    `- Publisher: ${st.publisher}`,
+    `- Categories: ${st.categories}`,
+    `- Top Markets: ${st.topMarkets}`,
+    `- Worldwide Release Date: ${st.releaseDate}`,
+    `- Last Updated: ${st.lastUpdated}`,
+    `- Languages: ${st.languages}`,
+    `- In-App Purchases: ${st.inAppPurchases}`,
+    `- Publisher Country: ${st.publisherCountry}`,
+    `- Advertised on Any Network: ${st.adsActive}`,
+  ].join("\n");
+}
+
 export async function execute({ keyword, country }) {
   const apps = await searchAppStore(keyword, country);
 
-  const rows = await Promise.all(
-    apps.map(async (entry, i) => {
+  // Persistent context so the SensorTower session survives across runs.
+  // headless: false lets the user log in on first use; the session is then
+  // saved to PROFILE_DIR and reused automatically on every subsequent call.
+  const context = await chromium.launchPersistentContext(PROFILE_DIR, {
+    headless: false,
+  });
+
+  try {
+    const page = await context.newPage();
+    const rows = [];
+
+    for (let i = 0; i < apps.length; i++) {
       let st;
       try {
-        st = await fetchSensorTowerData(entry.id, country);
+        st = await scrapeSensorTower(page, apps[i].id, country);
       } catch {
         st = EMPTY_ST;
       }
+      rows.push(formatApp(i, apps[i], st));
+    }
 
-      return [
-        `**#${i + 1} — ${entry.name}**`,
-        `- App Store: ${entry.storeUrl}`,
-        `- SensorTower: ${entry.sensorTowerUrl}`,
-        `- Downloads: ${st.downloads}`,
-        `- Revenue: ${st.revenue}`,
-        `- Rating: ${st.rating} (${st.ratingCount} ratings)`,
-        `- Publisher: ${st.publisher}`,
-        `- Categories: ${st.categories}`,
-        `- Top Markets: ${st.topMarkets}`,
-        `- Worldwide Release Date: ${st.releaseDate}`,
-        `- Last Updated: ${st.lastUpdated}`,
-        `- Languages: ${st.languages}`,
-        `- In-App Purchases: ${st.inAppPurchases}`,
-        `- Publisher Country: ${st.publisherCountry}`,
-        `- Advertised on Any Network: ${st.adsActive}`,
-      ].join("\n");
-    })
-  );
-
-  return rows.join("\n\n---\n\n");
+    return rows.join("\n\n---\n\n");
+  } finally {
+    await context.close();
+  }
 }
 
 export default {
