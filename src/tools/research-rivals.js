@@ -4,7 +4,9 @@ import { join } from "path";
 
 const PROFILE_DIR = join(homedir(), ".app-store-operator", "profile");
 
-const DESCRIPTION = `Search the App Store for a given keyword in a specific country store and return the top app names with their URLs, SensorTower data, and ratings.
+const DESCRIPTION = `Use this tool when the user wants to research rival or competitor apps in the App Store. Trigger phrases include: "rival research", "research rivals", "competitor analysis", "find competing apps", "check competitors", "competitive analysis", "what apps compete with", "App Store competitors", "rivals for keyword", or any variation of researching competing iOS apps.
+
+This tool searches the App Store for a given keyword in a specific country store and returns the top 3 apps with their URLs, SensorTower analytics data, and ratings.
 
 ## Step 1 — Gather inputs
 
