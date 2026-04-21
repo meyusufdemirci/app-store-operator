@@ -1,6 +1,6 @@
 {
   "name": "app-store-operator",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "MCP server for iOS App Store operations — rival research, ASO, and more",
   "type": "module",
   "bin": {

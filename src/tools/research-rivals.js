@@ -7,7 +7,7 @@ const PROFILE_DIR = join(homedir(), ".app-store-operator", "profile");
 
 const DESCRIPTION = `Use this tool when the user wants to research rival or competitor apps in the App Store. Trigger phrases include: "rival research", "research rivals", "competitor analysis", "find competing apps", "check competitors", "competitive analysis", "what apps compete with", "App Store competitors", "rivals for keyword", or any variation of researching competing iOS apps.
 
-This tool searches the App Store for a given keyword in a specific country store and returns the top 3 apps with their URLs, SensorTower analytics data, and ratings.
+This tool searches the App Store for a given keyword in a specific country store and returns the top 3 apps with structured JSON data including SensorTower analytics.
 
 ## Step 1 — Gather inputs
 
@@ -18,70 +18,61 @@ The following inputs are **required**. Check if each was provided with the comma
 
 Only proceed to Step 2 once both inputs are confirmed.
 
-## Step 2 — Search the App Store
+## Step 2 — Execute
 
-Fetch the search results page using WebFetch:
+Call this tool with the keyword and country. It returns a JSON object:
 
+\`\`\`json
+{
+  "keyword": "meditation",
+  "country": "us",
+  "fetchedAt": "2026-04-21T10:00:00.000Z",
+  "apps": [
+    {
+      "rank": 1,
+      "name": "App Name",
+      "appStoreUrl": "https://apps.apple.com/us/app/id123456",
+      "sensorTowerUrl": "https://app.sensortower.com/overview/123456",
+      "downloads": "<5K",
+      "revenue": "<$5K",
+      "rating": { "score": "4.7", "count": "1,234" },
+      "publisher": "Publisher Name",
+      "categories": "Health & Fitness",
+      "topMarkets": "United States, United Kingdom",
+      "releaseDate": "Jan 1, 2020",
+      "lastUpdated": "Mar 15, 2026",
+      "languages": "English, Spanish",
+      "inAppPurchases": "Monthly · $9.99",
+      "publisherCountry": "United States",
+      "advertisingNetworks": "N/A"
+    }
+  ]
+}
 \`\`\`
-https://apps.apple.com/{store}/iphone/search?term={keyword}
-\`\`\`
 
-Extract the first 3 app results including:
-- App name
-- App ID (numeric only, e.g. \`6455378213\` — strip the \`id\` prefix)
+Fields missing or gated behind a paywall will be \`"N/A"\`.
 
-## Step 3 — Generate URLs
+## Step 3 — Render
 
-For each app, generate:
-- App Store URL: \`https://apps.apple.com/{store}/app/id{appId}\`
-- SensorTower URL: \`https://app.sensortower.com/overview/{appId}\`
-
-## Step 4 — Fetch SensorTower data via Playwright
-
-For each app, use the Playwright MCP tools to fetch Sensor Tower data:
-
-1. Call \`mcp__playwright__browser_navigate\` with \`https://app.sensortower.com/overview/{appId}?country={store}\` (uppercase the store code for the country parameter, e.g. \`TR\`, \`US\`)
-2. Call \`mcp__playwright__browser_snapshot\` to capture the page content
-3. Parse the snapshot and extract:
-   - **Downloads** (Worldwide · Last Month — e.g. \`< 5k\` or exact number)
-   - **Revenue** (Worldwide · Last Month — e.g. \`< $5k\` or exact number)
-   - **Publisher** (developer/publisher name)
-   - **Categories** (e.g. \`Utilities, Productivity\`)
-   - **Top Markets** (top countries listed)
-   - **Worldwide Release Date**
-   - **Last Updated**
-   - **Languages** (comma-separated list)
-   - **In-App Purchases** (list each item with its duration and price; if none, record \`None\`)
-   - **Publisher Country** (country of the developer/publisher)
-   - **Advertised on Any Network** (yes/no — whether the app runs paid ads on any ad network)
-   - **Rating** (overall average rating, e.g. \`4.7\`)
-   - **Rating Count** (total number of ratings/reviews)
-
-Do this sequentially for each app (navigate → snapshot → extract → move to next app).
-
-If a value is not found or gated behind sign-in, record it as \`N/A\`.
-
-## Step 5 — Report
-
-Return a clean report for each app:
+Present the results as a clean report using the JSON fields. For each app:
 
 ---
 
-**#1 — App Name**
-- App Store: https://apps.apple.com/{store}/app/id{appId}
-- SensorTower: https://app.sensortower.com/overview/{appId}
-- Downloads: {value}
-- Revenue: {value}
-- Rating: {value} ({ratingCount} ratings)
-- Publisher: {value}
-- Categories: {value}
-- Top Markets: {value}
-- Worldwide Release Date: {value}
-- Last Updated: {value}
-- Languages: {value}
-- In-App Purchases: {value}
-- Publisher Country: {value}
-- Advertised on Any Network: {value}`;
+**#1 — {name}**
+- App Store: {appStoreUrl}
+- SensorTower: {sensorTowerUrl}
+- Downloads: {downloads}
+- Revenue: {revenue}
+- Rating: {rating.score} ({rating.count} ratings)
+- Publisher: {publisher}
+- Categories: {categories}
+- Top Markets: {topMarkets}
+- Worldwide Release Date: {releaseDate}
+- Last Updated: {lastUpdated}
+- Languages: {languages}
+- In-App Purchases: {inAppPurchases}
+- Publisher Country: {publisherCountry}
+- Advertised on Any Network: {advertisingNetworks}`;
 
 async function searchAppStore(keyword, country) {
   const url = `https://itunes.apple.com/search?term=${encodeURIComponent(keyword)}&country=${country}&entity=software&limit=3`;
@@ -166,24 +157,25 @@ const EMPTY_ST = {
   publisherCountry: "N/A", adsActive: "N/A", rating: "N/A", ratingCount: "N/A",
 };
 
-function formatApp(index, entry, st) {
-  return [
-    `**#${index + 1} — ${entry.name}**`,
-    `- App Store: ${entry.storeUrl}`,
-    `- SensorTower: ${entry.sensorTowerUrl}`,
-    `- Downloads: ${st.downloads}`,
-    `- Revenue: ${st.revenue}`,
-    `- Rating: ${st.rating} (${st.ratingCount} ratings)`,
-    `- Publisher: ${st.publisher}`,
-    `- Categories: ${st.categories}`,
-    `- Top Markets: ${st.topMarkets}`,
-    `- Worldwide Release Date: ${st.releaseDate}`,
-    `- Last Updated: ${st.lastUpdated}`,
-    `- Languages: ${st.languages}`,
-    `- In-App Purchases: ${st.inAppPurchases}`,
-    `- Publisher Country: ${st.publisherCountry}`,
-    `- Advertised on Any Network: ${st.adsActive}`,
-  ].join("\n");
+function buildAppProfile(rank, entry, st) {
+  return {
+    rank,
+    name: entry.name,
+    appStoreUrl: entry.storeUrl,
+    sensorTowerUrl: entry.sensorTowerUrl,
+    downloads: st.downloads,
+    revenue: st.revenue,
+    rating: { score: st.rating, count: st.ratingCount },
+    publisher: st.publisher,
+    categories: st.categories,
+    topMarkets: st.topMarkets,
+    releaseDate: st.releaseDate,
+    lastUpdated: st.lastUpdated,
+    languages: st.languages,
+    inAppPurchases: st.inAppPurchases,
+    publisherCountry: st.publisherCountry,
+    advertisingNetworks: st.adsActive,
+  };
 }
 
 async function launchContext() {
@@ -217,10 +209,10 @@ export async function execute({ keyword, country }) {
       } catch {
         st = EMPTY_ST;
       }
-      rows.push(formatApp(i, apps[i], st));
+      rows.push(buildAppProfile(i + 1, apps[i], st));
     }
 
-    return rows.join("\n\n---\n\n");
+    return JSON.stringify({ keyword, country, fetchedAt: new Date().toISOString(), apps: rows }, null, 2);
   } finally {
     await context.close();
   }
