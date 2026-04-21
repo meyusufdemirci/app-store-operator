@@ -74,18 +74,19 @@ export async function execute({ keyword, country }) {
   const context = await launchContext();
 
   try {
-    const page = await context.newPage();
-    const rows = [];
+    const pages = await Promise.all(apps.map(() => context.newPage()));
 
-    for (let i = 0; i < apps.length; i++) {
-      let st;
-      try {
-        st = await scrapeSensorTower(page, apps[i].id, country);
-      } catch {
-        st = EMPTY_ST;
-      }
-      rows.push(buildAppProfile(i + 1, apps[i], st));
-    }
+    const rows = await Promise.all(
+      apps.map(async (app, i) => {
+        let st;
+        try {
+          st = await scrapeSensorTower(pages[i], app.id, country);
+        } catch {
+          st = EMPTY_ST;
+        }
+        return buildAppProfile(i + 1, app, st);
+      })
+    );
 
     const result = { keyword, country, fetchedAt: new Date().toISOString(), cached: false, apps: rows };
     setCached(keyword, country, result);
