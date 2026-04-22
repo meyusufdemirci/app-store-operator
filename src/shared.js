@@ -2,19 +2,17 @@ import { chromium } from "playwright";
 import { homedir } from "os";
 import { join } from "path";
 import { execSync } from "child_process";
+import store from "app-store-scraper";
 
 export const PROFILE_DIR = join(homedir(), ".app-store-operator", "profile");
 
 export async function searchAppStore(keyword, country, limit = 3) {
-  const url = `https://itunes.apple.com/search?term=${encodeURIComponent(keyword)}&country=${country}&entity=software&limit=${limit}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`App Store search failed: ${res.status}`);
-  const data = await res.json();
-  return data.results.slice(0, limit).map((app) => ({
-    name: app.trackName,
-    id: String(app.trackId),
-    storeUrl: `https://apps.apple.com/${country}/app/id${app.trackId}`,
-    sensorTowerUrl: `https://app.sensortower.com/overview/${app.trackId}`,
+  const results = await store.search({ term: keyword, country, num: limit });
+  return results.slice(0, limit).map((app) => ({
+    name: app.title,
+    id: String(app.id),
+    storeUrl: app.url.split("?")[0],
+    sensorTowerUrl: `https://app.sensortower.com/overview/${app.id}`,
   }));
 }
 
