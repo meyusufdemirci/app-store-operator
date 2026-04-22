@@ -47,7 +47,7 @@ export const EMPTY_ST = {
 export async function scrapeSensorTower(page, appId, country) {
   await page.goto(
     `https://app.sensortower.com/overview/${appId}?country=${country.toUpperCase()}`,
-    { waitUntil: "domcontentloaded", timeout: 30000 }
+    { waitUntil: "load", timeout: 60000 }
   );
 
   const currentUrl = page.url();
@@ -62,17 +62,17 @@ export async function scrapeSensorTower(page, appId, country) {
     );
     await page.goto(
       `https://app.sensortower.com/overview/${appId}?country=${country.toUpperCase()}`,
-      { waitUntil: "domcontentloaded", timeout: 30000 }
+      { waitUntil: "load", timeout: 60000 }
     );
   }
 
   try {
     await page.waitForFunction(
       () => document.body.innerText.includes("Downloads") || document.body.innerText.includes("Revenue"),
-      { timeout: 20000 }
+      { timeout: 30000 }
     );
   } catch {
-    await page.waitForTimeout(12000);
+    await new Promise((resolve) => setTimeout(resolve, 20000));
   }
 
   const text = await page.evaluate(() => document.body.innerText);
