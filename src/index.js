@@ -6,8 +6,9 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprot
 import researchRivals from "./tools/research-rivals.js";
 import searchAppStore from "./tools/search-app-store.js";
 import getAppDetails from "./tools/get-app-details.js";
+import prepareIae from "./tools/prepare-iae.js";
 
-const tools = [researchRivals, searchAppStore, getAppDetails];
+const tools = [researchRivals, searchAppStore, getAppDetails, prepareIae];
 const toolMap = Object.fromEntries(tools.map((t) => [t.tool.name, t]));
 
 const server = new Server(

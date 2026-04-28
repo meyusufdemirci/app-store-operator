@@ -50,6 +50,21 @@ Fetches SensorTower analytics for one or more app IDs you already have (e.g. fro
 
 ---
 
+### `prepare_iae`
+
+Generates iOS App Store In-App Event (IAE) copy — 3 variations in the target language, then a final report. No external API calls: the user supplies keywords and event parameters directly.
+
+**Always call this tool when the user says anything like:**
+- "prepare IAE" / "prepare in-app event"
+- "create an in-app event" / "draft IAE copy"
+- "generate event copy" / "write IAE metadata"
+
+**Required inputs:** `keywords` (ordered array, up to 10) + `locale` (e.g. `en-us`, `tr`, `de-de`) + `event_purpose` + `audience` + `event_context` + `goal` + `tone`.
+
+After the tool returns the brief, generate 3 copy variations and ask the user to pick one, then present the output table and final report.
+
+---
+
 ## Tool Selection Guide
 
 | Goal | Tool |
@@ -58,6 +73,7 @@ Fetches SensorTower analytics for one or more app IDs you already have (e.g. fro
 | Discover which apps rank (no analytics needed) | `search_app_store` |
 | Get analytics for specific known app IDs | `get_app_details` |
 | Explore rankings + pick which apps to analyse | `search_app_store` → `get_app_details` |
+| Draft App Store In-App Event copy | `prepare_iae` |
 
 ## SensorTower Login
 

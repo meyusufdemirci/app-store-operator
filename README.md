@@ -33,6 +33,56 @@ Finds the top 3 apps for a keyword and returns a full metrics report for each.
 - Release date, last updated, supported languages
 - In-app purchases and ad network presence
 
+---
+
+### `search_app_store`
+
+Searches the App Store for a keyword and returns ranked results as a markdown table — instantly, no SensorTower required.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `keyword` | string | Search term to look up |
+| `country` | string | Two-letter country code |
+| `limit` | number | Number of results to return (1–25, default 3) |
+
+Use this to discover which apps rank before deciding which to analyse. Follow up with `get_app_details` for analytics on specific apps.
+
+---
+
+### `get_app_details`
+
+Fetches SensorTower analytics for one or more app IDs you already have.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `app_ids` | array | Numeric App Store IDs (e.g. from `search_app_store`) |
+| `country` | string | Two-letter country code |
+
+**Returns for each app:**
+- Downloads and revenue (worldwide + last month)
+- Rating and rating count
+- Publisher, categories, top markets
+- Release date, last updated, supported languages
+- In-app purchases and ad network presence
+
+---
+
+### `prepare_iae`
+
+Generates iOS App Store In-App Event (IAE) copy — 3 variations in the target language, then a final report.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `keywords` | array | Ordered keywords by priority (index 0–2 = Tier 1, 3–6 = Tier 2, 7–9 = Tier 3) |
+| `locale` | string | Target locale (e.g. `en-us`, `en-gb`, `de-de`, `tr`, `ja`, `ko`) |
+| `event_purpose` | string | What the event is about and why users should care |
+| `audience` | string | Target audience (e.g. students, professionals, parents) |
+| `event_context` | string | Real-world hook tying the event to a moment (e.g. a holiday, season) |
+| `goal` | string | Primary conversion goal (e.g. attract new users, boost engagement) |
+| `tone` | string | Copy tone: `Engaging`, `Playful`, `Motivational`, `Authoritative`, `Calm`, or `Urgent` |
+
+**Returns:** a structured brief used to generate 3 copy variations, each with event name (≤30 chars), short description (≤50 chars), and long description (≤120 chars).
+
 ## Requirements
 
 - Node.js v18+
@@ -76,7 +126,10 @@ SensorTower data is scraped via Playwright because it is rendered client-side.
 
 ```
 src/
-├── index.js          # MCP server setup and request handlers
+├── index.js                    # MCP server setup and request handlers
 └── tools/
-    └── research-rivals.js  # research_rivals tool implementation
+    ├── research-rivals.js      # research_rivals tool
+    ├── search-app-store.js     # search_app_store tool
+    ├── get-app-details.js      # get_app_details tool
+    └── prepare-iae.js          # prepare_iae tool
 ```
