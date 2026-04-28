@@ -1,4 +1,4 @@
-import { searchAppStore, scrapeSensorTower, launchContext, buildAppProfile, EMPTY_ST } from "../shared.js";
+import { searchAppStore, scrapeSensorTower, launchContext, buildAppProfile, EMPTY_ST, checkIsLoggedIn } from "../shared.js";
 import { getCached, setCached } from "../cache.js";
 
 const DESCRIPTION = `Search the App Store for a keyword and fetch SensorTower analytics for the top results — all in one call. Results are cached for 24 hours so repeat queries are instant.
@@ -72,6 +72,19 @@ export async function execute({ keyword, country }) {
   // headless: false lets the user log in on first use; the session is then
   // saved to PROFILE_DIR and reused automatically on every subsequent call.
   const context = await launchContext();
+
+  const checkPage = await context.newPage();
+  const isLoggedIn = await checkIsLoggedIn(checkPage);
+
+  if (!isLoggedIn) {
+    // Keep browser open so the user can log in — do NOT close context
+    return JSON.stringify({
+      error: "not_logged_in",
+      message: "SensorTower requires login. A browser window has been opened and navigated to SensorTower. Please log in and then call research_rivals again to continue.",
+    });
+  }
+
+  await checkPage.close();
 
   try {
     const pages = await Promise.all(apps.map(() => context.newPage()));

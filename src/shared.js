@@ -42,6 +42,12 @@ export const EMPTY_ST = {
   publisherCountry: "N/A", adsActive: "N/A", rating: "N/A", ratingCount: "N/A",
 };
 
+export async function checkIsLoggedIn(page) {
+  await page.goto("https://app.sensortower.com/", { waitUntil: "load", timeout: 30000 });
+  const url = page.url();
+  return !url.includes("login") && !url.includes("signin") && !url.includes("accounts");
+}
+
 export async function scrapeSensorTower(page, appId, country) {
   await page.goto(
     `https://app.sensortower.com/overview/${appId}?country=${country.toUpperCase()}`,

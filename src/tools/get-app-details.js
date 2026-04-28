@@ -1,4 +1,4 @@
-import { lookupAppsByIds, scrapeSensorTower, launchContext, buildAppProfile, EMPTY_ST } from "../shared.js";
+import { lookupAppsByIds, scrapeSensorTower, launchContext, buildAppProfile, EMPTY_ST, checkIsLoggedIn } from "../shared.js";
 
 const DESCRIPTION = `Fetch SensorTower analytics for one or more App Store app IDs. Returns downloads, revenue, ratings, publisher info, markets, and more for each app.
 
@@ -38,6 +38,19 @@ Fields missing or gated behind a paywall will be \`"N/A"\`.`;
 export async function execute({ app_ids, country }) {
   const entries = await lookupAppsByIds(app_ids, country);
   const context = await launchContext();
+
+  const checkPage = await context.newPage();
+  const isLoggedIn = await checkIsLoggedIn(checkPage);
+
+  if (!isLoggedIn) {
+    // Keep browser open so the user can log in — do NOT close context
+    return JSON.stringify({
+      error: "not_logged_in",
+      message: "SensorTower requires login. A browser window has been opened and navigated to SensorTower. Please log in and then call get_app_details again to continue.",
+    });
+  }
+
+  await checkPage.close();
 
   try {
     const page = await context.newPage();
