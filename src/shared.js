@@ -79,26 +79,79 @@ export async function scrapeSensorTower(page, appId, country) {
     await new Promise((resolve) => setTimeout(resolve, 20000));
   }
 
+  // KPI cards: downloads and revenue live in span.MuiTypography-h1, not the subtitle text
+  const kpiValues = await page.evaluate(() => {
+    const result = {};
+    const cards = document.querySelectorAll('div[class*="CardKpi-module__card"]');
+    cards.forEach((card) => {
+      const titleEl = card.querySelector('h4[class*="CardKpi-module__title"]');
+      const valueEl = card.querySelector(
+        'span[class*="AppOverviewKpiStatLink-module__link"], span.MuiTypography-h1'
+      );
+      if (titleEl && valueEl) {
+        result[titleEl.textContent.trim()] = valueEl.textContent.trim();
+      }
+    });
+    return result;
+  });
+
+  // BaseStatistic cards: categories, top markets, publisher, ads
+  const stats = await page.evaluate(() => {
+    const result = {};
+    document.querySelectorAll('div[class*="BaseStatistic-module__statistic"]').forEach((stat) => {
+      const label = stat.querySelector('[class*="BaseStatistic-module__label"]');
+      if (!label) return;
+      const vals = [...stat.querySelectorAll("a, span:not([class*='label'])")].map((e) => e.textContent.trim()).filter(Boolean);
+      result[label.textContent.trim()] = vals.join(", ");
+    });
+    return result;
+  });
+
+  // Publisher link in the app header
+  const publisher = await page.evaluate(() => {
+    const link = document.querySelector('a[href*="/publisher/ios/"]');
+    return link ? link.textContent.trim() : null;
+  });
+
+  // Capture full innerText before clicking any tabs (clicking changes the visible DOM)
   const text = await page.evaluate(() => document.body.innerText);
+
+  // Ratings and Reviews tab: rating score lives in aria-label of .MuiRating-root
+  let rating = "N/A";
+  let ratingCount = "N/A";
+  try {
+    await page.locator('[role="tab"]').filter({ hasText: "Ratings and Reviews" }).click({ timeout: 5000 });
+    await new Promise((r) => setTimeout(r, 2000));
+    const ratingData = await page.evaluate(() => {
+      const ratingEl = document.querySelector(".MuiRating-root");
+      const ariaLabel = ratingEl?.getAttribute("aria-label") ?? "";
+      const scoreMatch = ariaLabel.match(/^(\d+\.?\d*)\s*Stars?/i);
+      return { score: scoreMatch ? scoreMatch[1] : null };
+    });
+    rating = ratingData.score ?? "N/A";
+  } catch {}
   const extract = (pattern) => {
     const match = text.match(pattern);
     return match ? match[1].trim() : "N/A";
   };
 
   return {
-    downloads: extract(/Downloads[^\n]*\n([^\n]+)/i),
-    revenue: extract(/Revenue[^\n]*\n([^\n]+)/i),
-    publisher: extract(/Publisher\s*\n([^\n]+)/i),
-    categories: extract(/Categor(?:y|ies)\s*\n([^\n]+)/i),
-    topMarkets: extract(/Top (?:Markets|Countries)\s*\n([^\n]+)/i),
-    releaseDate: extract(/(?:Worldwide )?Release Date\s*\n([^\n]+)/i),
-    lastUpdated: extract(/(?:Last )?Updated\s*\n([^\n]+)/i),
-    languages: extract(/Languages?\s*\n([^\n]+)/i),
-    inAppPurchases: extract(/In-App Purchases?\s*\n([^\n]+)/i),
-    publisherCountry: extract(/Publisher Country\s*\n([^\n]+)/i),
-    adsActive: extract(/(?:Advertis|Ad Network)[^\n]*\n([^\n]+)/i),
-    rating: extract(/(\d+\.?\d*)\s*(?:out of 5|★)/i),
-    ratingCount: extract(/(\d[\d,]+)\s*(?:ratings?|reviews?)/i),
+    downloads: kpiValues["Downloads"] ?? "N/A",
+    revenue: kpiValues["Revenue"] ?? "N/A",
+    publisher: publisher ?? stats["Support URL"] ?? "N/A",
+    categories: stats["Categories"] ?? extract(/Categor(?:y|ies)[^\n]*\n([^\n]+)/i),
+    topMarkets: stats["Top Countries / Regions"] ?? stats["Top Markets"] ?? "N/A",
+    releaseDate:
+      extract(/Worldwide Release Date:[^\n]*\n+([^\n]+)/i) !== "N/A"
+        ? extract(/Worldwide Release Date:[^\n]*\n+([^\n]+)/i)
+        : extract(/Country Release Date:[^\n]*\n+([^\n]+)/i),
+    lastUpdated: extract(/Last Updated:[^\n]*\n+([^\n]+)/i),
+    languages: extract(/Languages?:[^\n]*\n+([^\n]+)/i),
+    inAppPurchases: extract(/In-App Purchases?[^\n]*\n[^\n]+\n([^\n]+)/i),
+    publisherCountry: extract(/Publisher Country:[^\n]*\n+([^\n]+)/i),
+    adsActive: stats["Advertised on Any Network"] ?? extract(/(?:Advertis|Ad Network)[^\n]*\n([^\n]+)/i),
+    rating,
+    ratingCount,
   };
 }
 
