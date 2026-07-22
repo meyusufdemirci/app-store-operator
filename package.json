@@ -1,7 +1,17 @@
 {
   "name": "app-store-operator",
-  "version": "0.2.0",
-  "description": "MCP server for iOS App Store operations — rival research, ASO, and more",
+  "version": "0.2.1",
+  "mcpName": "io.github.meyusufdemirci/app-store-operator",
+  "description": "Free App Store competitive intelligence for Claude — rival downloads, revenue, and ASO keywords.",
+  "homepage": "https://app-store-operator.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/meyusufdemirci/app-store-operator.git"
+  },
+  "bugs": {
+    "url": "https://github.com/meyusufdemirci/app-store-operator/issues"
+  },
+  "author": "Yusuf Demirci",
   "type": "module",
   "bin": {
     "app-store-operator": "./src/index.js"
@@ -24,9 +34,19 @@
   },
   "keywords": [
     "mcp",
+    "mcp-server",
+    "modelcontextprotocol",
+    "claude",
     "app-store",
     "aso",
-    "ios"
+    "ios",
+    "app-store-optimization",
+    "keyword-research",
+    "competitor-analysis",
+    "sensortower",
+    "sensortower-alternative",
+    "app-analytics",
+    "indie-dev"
   ],
   "license": "MIT"
 }
