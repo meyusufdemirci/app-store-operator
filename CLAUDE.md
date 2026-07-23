@@ -60,17 +60,20 @@ Scraping is selector-brittle by nature. `scrapeSensorTower` reads KPI cards via 
 
 ## Release
 
-Version appears in **three** places that must move together:
+Cutting a release is one command:
 
-1. `package.json` → `version`
-2. `server.json` → `version`
-3. `server.json` → `packages[0].version`
+```
+npm version patch    # or minor / major / an explicit 0.3.2
+git push github development --follow-tags
+```
 
-`server.json` is the MCP registry manifest; `mcpName` in `package.json` must match its `name`. Published npm files are limited to `src` and `scripts`.
+`npm version` bumps `package.json`, then the `version` lifecycle script runs `scripts/sync-version.js`, which copies that version into the **two** slots `server.json` carries it in (`version` and `packages[0].version`) and `git add`s the file so it lands in the same commit. The commit and the tag are created for you; `.npmrc` sets `tag-version-prefix=` so the tag is a bare `0.3.2`, not `v0.3.2`. Never edit the three version fields by hand — the sync script is the only writer.
 
-`src/index.js` reads its advertised server version from `package.json` at startup, so only the three places above need touching.
+`server.json` is the MCP registry manifest; `mcpName` in `package.json` must match its `name`. Published npm files are limited to `src` and `scripts`, minus `scripts/sync-version.js` (release-time only).
 
-Publishing is automated by `.github/workflows/publish.yml`: bump the three versions, commit, then `git tag 0.3.2 && git push github 0.3.2` (tags carry no `v` prefix — the tag name is the version). The workflow refuses to continue unless all three match the tag (and `mcpName` matches `server.json`'s `name`), runs the smoke test, publishes to npm, then registers `server.json` with the MCP registry. Both publishes authenticate over GitHub OIDC and **no repository secrets are required**: npm uses trusted publishing (registered on npmjs.com against this repo + the `publish.yml` filename — renaming the workflow breaks it), and the MCP registry proves the `io.github.meyusufdemirci/*` namespace from the token's repo claim. Re-running a failed job is safe: an already-published npm version is skipped.
+`src/index.js` reads its advertised server version from `package.json` at startup, so nothing else tracks the version.
+
+Publishing is then automated by `.github/workflows/publish.yml`, triggered by the tag. The workflow refuses to continue unless all three match the tag (and `mcpName` matches `server.json`'s `name`), runs the smoke test, publishes to npm, then registers `server.json` with the MCP registry. Both publishes authenticate over GitHub OIDC and **no repository secrets are required**: npm uses trusted publishing (registered on npmjs.com against this repo + the `publish.yml` filename — renaming the workflow breaks it), and the MCP registry proves the `io.github.meyusufdemirci/*` namespace from the token's repo claim. Re-running a failed job is safe: an already-published npm version is skipped.
 
 ## Known gaps
 
