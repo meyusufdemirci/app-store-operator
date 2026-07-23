@@ -1,0 +1,84 @@
+name: Publish
+
+# Tag-driven release: pushing 0.3.2 publishes app-store-operator@0.3.2 to npm and
+# then registers the matching server.json with the official MCP registry.
+# Tags in this repo carry no `v` prefix, so the tag name *is* the version.
+on:
+  push:
+    tags: ["[0-9]+.[0-9]+.[0-9]+"]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # OIDC: MCP registry login + npm provenance
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+          registry-url: https://registry.npmjs.org
+
+      # --ignore-scripts skips the Playwright Chromium download from postinstall.
+      # The smoke test only boots the server over stdio, so no browser is needed.
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      # package.json, server.json and server.json packages[0] must all match the tag.
+      - name: Verify version consistency
+        run: |
+          VERSION="$GITHUB_REF_NAME"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+          fail=0
+          check() {
+            if [ "$2" != "$VERSION" ]; then
+              echo "::error::$1 is \"$2\" but the tag says \"$VERSION\""
+              fail=1
+            fi
+          }
+          check "package.json version"        "$(jq -r '.version' package.json)"
+          check "server.json version"         "$(jq -r '.version' server.json)"
+          check "server.json packages[0].version" "$(jq -r '.packages[0].version' server.json)"
+
+          MCP_NAME="$(jq -r '.mcpName' package.json)"
+          SERVER_NAME="$(jq -r '.name' server.json)"
+          if [ "$MCP_NAME" != "$SERVER_NAME" ]; then
+            echo "::error::package.json mcpName ($MCP_NAME) does not match server.json name ($SERVER_NAME)"
+            fail=1
+          fi
+
+          [ "$fail" -eq 0 ] || exit 1
+          echo "Version $VERSION is consistent across package.json and server.json."
+
+      - name: Run smoke test
+        run: npm run smoke
+
+      # Skipping an already-published version keeps re-runs of a failed job safe.
+      - name: Publish package to npm
+        run: |
+          NAME="$(jq -r '.name' package.json)"
+          if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "$NAME@$VERSION is already on npm — skipping publish."
+          else
+            npm publish --provenance --access public
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Install mcp-publisher
+        run: |
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+
+      # The io.github.meyusufdemirci/* namespace is proven by the OIDC token's repo
+      # claim, so no registry secret is needed.
+      - name: Authenticate to MCP Registry
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish server to MCP Registry
+        run: ./mcp-publisher publish
