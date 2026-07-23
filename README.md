@@ -8,11 +8,31 @@
   <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-compatible-6366f1" alt="MCP"></a>
 </p>
 
-An MCP (Model Context Protocol) server that provides App Store competitive research tools for iOS app developers.
+**App Store competitive intelligence, inside Claude.**
+
+App Store Operator is an MCP server that brings App Store research directly into your AI
+assistant. Instead of switching to a dashboard, you ask Claude for ranked keyword results,
+competitor download and revenue estimates, or App Store Connect-ready In-App Event copy —
+and get the answer in the same conversation where you are making the decision.
+
+Built for indie iOS developers who want research inside their workflow rather than in
+another browser tab. Free and open source (MIT). A lightweight alternative to SensorTower,
+AppTweak, and AppFollow for iOS-only competitive research.
+
+```bash
+claude mcp add --transport stdio app-store-operator -- npx -y app-store-operator@latest
+```
+
+→ [app-store-operator.com](https://app-store-operator.com) · [Setup guide](#usage)
 
 ## What it does
 
-Searches the App Store for competing apps on a given keyword and pulls detailed analytics from SensorTower — downloads, revenue, ratings, top markets, publisher info, and more.
+Searches the App Store for competing apps on a given keyword and pulls detailed analytics
+from SensorTower — downloads, revenue, ratings, top markets, publisher info, and more.
+
+`search_app_store` and `prepare_iae` work with no account at all. `research_rivals` and
+`get_app_details` open a browser once for a **free** SensorTower sign-in, then reuse that
+saved session — no paid plan, no API key.
 
 ## Tools
 
