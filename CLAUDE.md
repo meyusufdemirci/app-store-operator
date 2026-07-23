@@ -60,9 +60,10 @@ Scraping is selector-brittle by nature. `scrapeSensorTower` reads KPI cards via 
 
 ## Release
 
-Cutting a release is one command:
+Cutting a release is two steps — write the notes, then tag:
 
 ```
+# 1. rename CHANGELOG.md's "## Unreleased" heading to the version you're about to cut
 npm version patch    # or minor / major / an explicit 0.3.2
 git push github development --follow-tags
 ```
@@ -73,7 +74,9 @@ git push github development --follow-tags
 
 `src/index.js` reads its advertised server version from `package.json` at startup, so nothing else tracks the version.
 
-Publishing is then automated by `.github/workflows/publish.yml`, triggered by the tag. The workflow refuses to continue unless all three match the tag (and `mcpName` matches `server.json`'s `name`), runs the smoke test, publishes to npm, then registers `server.json` with the MCP registry. Both publishes authenticate over GitHub OIDC and **no repository secrets are required**: npm uses trusted publishing (registered on npmjs.com against this repo + the `publish.yml` filename — renaming the workflow breaks it), and the MCP registry proves the `io.github.meyusufdemirci/*` namespace from the token's repo claim. Re-running a failed job is safe: an already-published npm version is skipped.
+Publishing is then automated by `.github/workflows/publish.yml`, triggered by the tag. The workflow refuses to continue unless all three match the tag (and `mcpName` matches `server.json`'s `name`), runs the smoke test, publishes to npm, registers `server.json` with the MCP registry, and finally creates the GitHub release.
+
+Release notes are **not** generated from commit subjects — they're the `CHANGELOG.md` section whose heading exactly matches the tag (`## 0.3.3`), copied verbatim into the release body. That file is written for users of the tools, not for whoever touched the CI. If the section is missing the workflow logs a warning and falls back to `--generate-notes`, which dumps raw commit subjects into a public release — treat that fallback as a bug, not a workflow. Adding a release therefore means renaming `## Unreleased` before running `npm version`; unlike the version fields, this one is hand-written on purpose. Both publishes authenticate over GitHub OIDC and **no repository secrets are required**: npm uses trusted publishing (registered on npmjs.com against this repo + the `publish.yml` filename — renaming the workflow breaks it), and the MCP registry proves the `io.github.meyusufdemirci/*` namespace from the token's repo claim. Re-running a failed job is safe: an already-published npm version is skipped.
 
 ## Known gaps
 

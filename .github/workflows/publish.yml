@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       id-token: write # OIDC: npm trusted publishing + provenance, MCP registry login
-      contents: read
+      contents: write # create the GitHub release for this tag
 
     steps:
       - name: Checkout code
@@ -88,3 +88,31 @@ jobs:
 
       - name: Publish server to MCP Registry
         run: ./mcp-publisher publish
+
+      # Release notes are the CHANGELOG.md section whose heading matches the tag —
+      # hand-written for users, not derived from commit subjects. A missing section
+      # falls back to GitHub's auto-generated commit list so a release still appears,
+      # but that fallback is the ugly path: keep the changelog current instead.
+      # GITHUB_TOKEN is issued per run by Actions; it is not a repository secret.
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            echo "Release $VERSION already exists — skipping."
+            exit 0
+          fi
+
+          NOTES="$RUNNER_TEMP/release-notes.md"
+          awk -v ver="$VERSION" '
+            $0 == "## " ver { found = 1; next }
+            found && /^## / { exit }
+            found { print }
+          ' CHANGELOG.md > "$NOTES"
+
+          if grep -q '[^[:space:]]' "$NOTES"; then
+            gh release create "$VERSION" --title "$VERSION" --notes-file "$NOTES"
+          else
+            echo "::warning::CHANGELOG.md has no \"## $VERSION\" section — falling back to auto-generated notes."
+            gh release create "$VERSION" --title "$VERSION" --generate-notes
+          fi
