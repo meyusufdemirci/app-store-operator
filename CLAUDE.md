@@ -22,6 +22,7 @@ src/
     └── prepare-iae.js
 scripts/postinstall.js    # installs Playwright Chromium on npm install
 test/smoke-test-mcp.js    # boots the server over stdio, asserts initialize + tools/list
+Dockerfile                # Playwright base image; for the Glama listing + container runs
 ```
 
 `test/` is deliberately outside `package.json`'s `files` allowlist so the smoke test is not published to npm.
@@ -71,8 +72,7 @@ Version appears in **three** places that must move together:
 
 ## Known gaps
 
-- `rating.count` is always `"N/A"` — `scrapeSensorTower` declares `ratingCount` at `src/shared.js:121` and never assigns it, though the tool descriptions and README advertise a real count.
-- README's "How it works" says *headless* browser; the code runs headed.
+- `rating.count` is always `"N/A"` — `scrapeSensorTower` declares `ratingCount` at `src/shared.js:121` and never assigns it (the `page.evaluate` block below it only parses the score out of the `aria-label`). The README no longer advertises a count, but the `research_rivals` and `get_app_details` tool descriptions still show a populated `"count"` in their example JSON. Fixing the scraper is the real resolution; until then those examples overpromise.
 
 ---
 

@@ -28,7 +28,7 @@ Finds the top 3 apps for a keyword and returns a full metrics report for each.
 **Returns for each competitor:**
 - App Store & SensorTower URLs
 - Worldwide and last-month downloads & revenue
-- Rating and rating count
+- Rating score
 - Publisher, categories, top markets
 - Release date, last updated, supported languages
 - In-app purchases and ad network presence
@@ -60,7 +60,7 @@ Fetches SensorTower analytics for one or more app IDs you already have.
 
 **Returns for each app:**
 - Downloads and revenue (worldwide + last month)
-- Rating and rating count
+- Rating score
 - Publisher, categories, top markets
 - Release date, last updated, supported languages
 - In-app purchases and ad network presence
@@ -141,21 +141,29 @@ The server communicates over stdio and is designed to be invoked by an MCP clien
 ## How it works
 
 1. Queries the iTunes Search API for the top 3 apps matching the keyword and country
-2. For each app, launches a headless Chromium browser to scrape SensorTower analytics
+2. For each app, drives a Chromium browser to scrape SensorTower analytics
 3. Extracts metrics and returns a compiled plain-text report
 
 SensorTower data is scraped via Playwright because it is rendered client-side.
+
+**A browser window will open.** This is deliberate, not a bug: SensorTower requires a login, so the first run opens a visible window for you to sign in. The session is saved to `~/.app-store-operator/profile` and reused on every later call, so you only log in once. If a tool reports `not_logged_in`, finish signing in on that window and run the tool again.
+
+Results from `research_rivals` are cached for 24 hours in `~/.app-store-operator/cache.json` — override the TTL with the `ASO_CACHE_TTL_HOURS` environment variable.
 
 ## Project structure
 
 ```
 src/
 ├── index.js                    # MCP server setup and request handlers
+├── shared.js                   # App Store lookup + SensorTower scraping
+├── cache.js                    # 24h local cache (research_rivals only)
 └── tools/
     ├── research-rivals.js      # research_rivals tool
     ├── search-app-store.js     # search_app_store tool
     ├── get-app-details.js      # get_app_details tool
     └── prepare-iae.js          # prepare_iae tool
+scripts/postinstall.js          # installs Playwright Chromium on install
+test/smoke-test-mcp.js          # stdio smoke test
 ```
 
 ## Development
