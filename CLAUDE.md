@@ -2,11 +2,82 @@
 
 This project is an MCP server that provides App Store competitive intelligence tools.
 
-## MCP Tools
+Two audiences for this file: the **Codebase** section below is for working *on* this repo; the **MCP Tools** section is for clients calling the published server.
+
+---
+
+# Codebase
+
+Plain ESM Node (`"type": "module"`), no build step, no tests, no linter. Node ≥ 18.
+
+```
+src/
+├── index.js              # MCP server: registers tools, dispatches CallTool
+├── shared.js             # App Store lookup + Playwright/SensorTower scraping
+├── cache.js              # 24h JSON file cache (research_rivals only)
+└── tools/
+    ├── research-rivals.js
+    ├── search-app-store.js
+    ├── get-app-details.js
+    └── prepare-iae.js
+scripts/postinstall.js    # installs Playwright Chromium on npm install
+```
+
+## Tool module contract
+
+Every file in `src/tools/` default-exports `{ tool, execute }`:
+
+- `tool` — the MCP tool descriptor (`name`, `description`, `inputSchema`).
+- `execute(args)` — **must resolve to a string**. `src/index.js:32` wraps the return value directly in `{ type: "text" }` with no serialization, so JSON-returning tools call `JSON.stringify(..., null, 2)` themselves.
+
+To add a tool: create the file, then import it and append it to the `tools` array in `src/index.js:11`. Registration and dispatch are derived from that array — nothing else to touch.
+
+The `description` field is the real prompt. Trigger phrases, output shape, and post-processing instructions for the client all live there (see `prepare-iae.js`, whose description drives the entire 3-variation workflow). Behaviour changes usually mean editing a description, not code.
+
+## SensorTower scraping
+
+`shared.js` drives a **non-headless** persistent Chromium context (`launchPersistentContext`, `headless: false`) rooted at `~/.app-store-operator/profile`. Non-headless is deliberate — the first run needs a visible window for the user to log in, and the session then persists in that profile.
+
+Flow used by both scraping tools: `launchContext()` → `checkIsLoggedIn()` → on failure return `{"error": "not_logged_in"}` **without closing the context** (the open window is how the user logs in) → otherwise scrape and `context.close()` in a `finally`.
+
+Scraping is selector-brittle by nature. `scrapeSensorTower` reads KPI cards via `div[class*="CardKpi-module__card"]`, stats via `div[class*="BaseStatistic-module__statistic"]`, ratings via `.MuiRating-root`'s `aria-label`, and falls back to regex over `document.body.innerText` for the rest. Per-app failures are swallowed and replaced with `EMPTY_ST` (all `"N/A"`), so a partial result never fails the whole call. If a field starts returning `"N/A"` across the board, SensorTower changed its markup.
+
+`launchContext()` self-heals a missing browser by shelling out to `npx playwright install chromium`.
+
+## Caching
+
+`cache.js` writes `~/.app-store-operator/cache.json`, keyed `country:keyword` (both lowercased). TTL is 24h, overridable with the `ASO_CACHE_TTL_HOURS` env var. Only `research_rivals` reads/writes it — `get_app_details` always scrapes fresh.
+
+## Data sources
+
+- `search_app_store` and `searchAppStore()` use the `app-store-scraper` package.
+- `lookupAppsByIds()` hits the iTunes Lookup API directly over `fetch` (no scraper dependency).
+- Everything downloads/revenue-related comes from the SensorTower scrape.
+
+## Release
+
+Version appears in **three** places that must move together:
+
+1. `package.json` → `version`
+2. `server.json` → `version`
+3. `server.json` → `packages[0].version`
+
+`server.json` is the MCP registry manifest; `mcpName` in `package.json` must match its `name`. Published npm files are limited to `src` and `scripts`.
+
+Note: `src/index.js:15` hardcodes the server version `"0.1.0"` and has drifted from `package.json` — it is not read from the manifest.
+
+## Known gaps
+
+- `rating.count` is always `"N/A"` — `scrapeSensorTower` declares `ratingCount` at `src/shared.js:121` and never assigns it, though the tool descriptions and README advertise a real count.
+- README's "How it works" says *headless* browser; the code runs headed.
+
+---
+
+# MCP Tools
 
 ### `research_rivals`
 
-All-in-one call: searches the App Store for a keyword, then fetches SensorTower analytics for the top 3 results. Results are cached for 24 hours.
+All-in-one call: searches the App Store for a keyword, then fetches SensorTower analytics for the top 3 results. Results are cached for 24 hours (override with `ASO_CACHE_TTL_HOURS`).
 
 **Always call this tool when the user says anything like:**
 - "rival research" / "research rivals"
