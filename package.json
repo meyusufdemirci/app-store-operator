@@ -14,7 +14,7 @@
   "author": "Yusuf Demirci",
   "type": "module",
   "bin": {
-    "app-store-operator": "./src/index.js"
+    "app-store-operator": "src/index.js"
   },
   "files": [
     "src",
