@@ -55,9 +55,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     return { content: [{ type: "text", text: result }] };
   }
 
+  if (typeof result?.text === "string") {
+    return {
+      content: [{ type: "text", text: result.text }],
+      ...(result.isError ? { isError: true } : {}),
+    };
+  }
+
   return {
-    content: [{ type: "text", text: result.text }],
-    ...(result.isError ? { isError: true } : {}),
+    content: [{ type: "text", text: `Tool ${name} returned an unexpected result.` }],
+    isError: true,
   };
 });
 

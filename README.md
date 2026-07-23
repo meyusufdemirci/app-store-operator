@@ -89,35 +89,7 @@ Generates iOS App Store In-App Event (IAE) copy — 3 variations in the target l
 
 ## Usage
 
-### As an MCP server (OpenAI Codex / Claude Desktop / Claude Code)
-
-**OpenAI Codex** — run this command once:
-
-```bash
-codex mcp add app-store-operator -- npx -y app-store-operator@latest
-```
-
-Codex stores MCP servers in `~/.codex/config.toml` and supports the same stdio transport this package already uses. This server now also returns MCP `instructions` during initialization so Codex can apply the right cross-tool workflow automatically.
-
-If you prefer to edit `config.toml` directly:
-
-```toml
-[mcp_servers.app-store-operator]
-command = "npx"
-args = ["-y", "app-store-operator@latest"]
-
-# Optional but useful for SensorTower scraping flows
-startup_timeout_sec = 20
-tool_timeout_sec = 180
-```
-
-After adding the server, restart Codex or start a new thread, then ask things like:
-
-- `Research rivals for "hairstyle" in the GB App Store`
-- `Search the App Store for "beard style" in France`
-- `Prepare an in-app event for a summer hairstyle campaign in en-gb`
-
-Codex app-server support is not a separate transport you need to implement here. Per the OpenAI docs, app-server is for embedding Codex into your own product, while third-party tools like this project integrate with Codex through MCP.
+### As an MCP server (Claude Code / Claude Desktop / OpenAI Codex)
 
 **Claude Code** — run this command once:
 
@@ -138,23 +110,33 @@ claude mcp add --transport stdio app-store-operator -- npx -y app-store-operator
 }
 ```
 
-No installation step needed — `npx` fetches and runs the package automatically.
-
-The server communicates over stdio and is designed to be invoked by an MCP client.
-
-## Codex compatibility
-
-This repository now exposes the MCP features Codex relies on for a clean integration:
-
-- server-wide `initialize.instructions` for tool routing and login behavior
-- explicit MCP tool errors when SensorTower login is required
-- a local smoke test that verifies `initialize` and `tools/list`
-
-Run the smoke test with:
+**OpenAI Codex** — run this command once:
 
 ```bash
-npm run smoke:codex
+codex mcp add app-store-operator -- npx -y app-store-operator@latest
 ```
+
+Codex stores MCP servers in `~/.codex/config.toml`. If you prefer to edit it directly:
+
+```toml
+[mcp_servers.app-store-operator]
+command = "npx"
+args = ["-y", "app-store-operator@latest"]
+
+# Optional but useful for SensorTower scraping flows
+startup_timeout_sec = 20
+tool_timeout_sec = 180
+```
+
+Then restart Codex or start a new thread, and ask things like:
+
+- `Research rivals for "hairstyle" in the GB App Store`
+- `Search the App Store for "beard style" in France`
+- `Prepare an in-app event for a summer hairstyle campaign in en-gb`
+
+No installation step needed — `npx` fetches and runs the package automatically.
+
+The server communicates over stdio and is designed to be invoked by an MCP client. It advertises server-wide `instructions` during `initialize` so clients route between the tools correctly, and returns an MCP tool error when SensorTower login is required.
 
 ## How it works
 
@@ -174,4 +156,12 @@ src/
     ├── search-app-store.js     # search_app_store tool
     ├── get-app-details.js      # get_app_details tool
     └── prepare-iae.js          # prepare_iae tool
+```
+
+## Development
+
+Run the smoke test to verify the server boots and exposes every tool over stdio — it checks `initialize` (including server instructions) and `tools/list`:
+
+```bash
+npm run smoke
 ```

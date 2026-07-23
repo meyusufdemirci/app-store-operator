@@ -23,7 +23,7 @@
   "scripts": {
     "start": "node src/index.js",
     "postinstall": "node scripts/postinstall.js",
-    "smoke:codex": "node scripts/smoke-test-mcp.js"
+    "smoke": "node test/smoke-test-mcp.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.10.2",

@@ -1,11 +1,13 @@
+import { readFileSync } from "node:fs";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
+const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 
 const client = new Client({
-  name: "codex-smoke-test",
+  name: "app-store-operator-smoke-test",
   version: "1.0.0",
 });
 
@@ -24,7 +26,12 @@ try {
 
   const instructions = client.getInstructions();
   if (!instructions?.includes("Use this server for iOS App Store competitor research")) {
-    fail("initialize response is missing Codex-facing server instructions.");
+    fail("initialize response is missing the server instructions.");
+  }
+
+  const { version } = client.getServerVersion() ?? {};
+  if (version !== packageJson.version) {
+    fail(`Server advertised version "${version}" but package.json says "${packageJson.version}".`);
   }
 
   const tools = await client.listTools();
@@ -37,7 +44,7 @@ try {
     }
   }
 
-  console.log("Codex MCP smoke test passed.");
+  console.log(`MCP smoke test passed (v${version}).`);
   console.log(`Tools: ${toolNames.join(", ")}`);
 } finally {
   await transport.close().catch(() => {});

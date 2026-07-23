@@ -8,7 +8,7 @@ Two audiences for this file: the **Codebase** section below is for working *on* 
 
 # Codebase
 
-Plain ESM Node (`"type": "module"`), no build step, no tests, no linter. Node ≥ 18.
+Plain ESM Node (`"type": "module"`), no build step, no linter. Node ≥ 18. The only test is a stdio smoke test (`npm run smoke`).
 
 ```
 src/
@@ -21,14 +21,17 @@ src/
     ├── get-app-details.js
     └── prepare-iae.js
 scripts/postinstall.js    # installs Playwright Chromium on npm install
+test/smoke-test-mcp.js    # boots the server over stdio, asserts initialize + tools/list
 ```
+
+`test/` is deliberately outside `package.json`'s `files` allowlist so the smoke test is not published to npm.
 
 ## Tool module contract
 
 Every file in `src/tools/` default-exports `{ tool, execute }`:
 
 - `tool` — the MCP tool descriptor (`name`, `description`, `inputSchema`).
-- `execute(args)` — **must resolve to a string**. `src/index.js:32` wraps the return value directly in `{ type: "text" }` with no serialization, so JSON-returning tools call `JSON.stringify(..., null, 2)` themselves.
+- `execute(args)` — resolves to **either a string or `{ text, isError }`**. Neither shape is serialized for you, so JSON-returning tools call `JSON.stringify(..., null, 2)` themselves. A bare string becomes a successful `{ type: "text" }` result; return the object form to flag a failure (`isError: true`) while still handing the client a readable payload — that's how the two scraping tools surface `not_logged_in`. Anything else is coerced to a generic tool error.
 
 To add a tool: create the file, then import it and append it to the `tools` array in `src/index.js:11`. Registration and dispatch are derived from that array — nothing else to touch.
 
@@ -64,7 +67,7 @@ Version appears in **three** places that must move together:
 
 `server.json` is the MCP registry manifest; `mcpName` in `package.json` must match its `name`. Published npm files are limited to `src` and `scripts`.
 
-Note: `src/index.js:15` hardcodes the server version `"0.1.0"` and has drifted from `package.json` — it is not read from the manifest.
+`src/index.js` reads its advertised server version from `package.json` at startup, so only the three places above need touching.
 
 ## Known gaps
 
