@@ -3,7 +3,7 @@
   "name": "io.github.meyusufdemirci/app-store-operator",
   "title": "App Store Operator",
   "description": "Free App Store competitive intelligence for Claude — rival downloads, revenue, and ASO keywords.",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "websiteUrl": "https://app-store-operator.com",
   "repository": {
     "url": "https://github.com/meyusufdemirci/app-store-operator",
@@ -13,7 +13,7 @@
     {
       "registryType": "npm",
       "identifier": "app-store-operator",
-      "version": "0.2.1",
+      "version": "0.3.0",
       "transport": {
         "type": "stdio"
       },
