@@ -70,7 +70,7 @@ Version appears in **three** places that must move together:
 
 `src/index.js` reads its advertised server version from `package.json` at startup, so only the three places above need touching.
 
-Publishing is automated by `.github/workflows/publish.yml`: bump the three versions, commit, then `git tag 0.3.2 && git push github 0.3.2` (tags carry no `v` prefix — the tag name is the version). The workflow refuses to continue unless all three match the tag (and `mcpName` matches `server.json`'s `name`), runs the smoke test, publishes to npm, then registers `server.json` with the MCP registry. Registry auth is GitHub OIDC — the `io.github.meyusufdemirci/*` namespace is proven by the token's repo claim, so the only secret needed is `NPM_TOKEN`. Re-running a failed job is safe: an already-published npm version is skipped.
+Publishing is automated by `.github/workflows/publish.yml`: bump the three versions, commit, then `git tag 0.3.2 && git push github 0.3.2` (tags carry no `v` prefix — the tag name is the version). The workflow refuses to continue unless all three match the tag (and `mcpName` matches `server.json`'s `name`), runs the smoke test, publishes to npm, then registers `server.json` with the MCP registry. Both publishes authenticate over GitHub OIDC and **no repository secrets are required**: npm uses trusted publishing (registered on npmjs.com against this repo + the `publish.yml` filename — renaming the workflow breaks it), and the MCP registry proves the `io.github.meyusufdemirci/*` namespace from the token's repo claim. Re-running a failed job is safe: an already-published npm version is skipped.
 
 ## Known gaps
 

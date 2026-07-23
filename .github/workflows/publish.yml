@@ -11,7 +11,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      id-token: write # OIDC: MCP registry login + npm provenance
+      id-token: write # OIDC: npm trusted publishing + provenance, MCP registry login
       contents: read
 
     steps:
@@ -23,6 +23,10 @@ jobs:
         with:
           node-version: lts/*
           registry-url: https://registry.npmjs.org
+
+      # npm trusted publishing (OIDC) needs npm >= 11.5.1; the LTS bundle may be older.
+      - name: Ensure npm supports trusted publishing
+        run: npm install -g npm@latest
 
       # --ignore-scripts skips the Playwright Chromium download from postinstall.
       # The smoke test only boots the server over stdio, so no browser is needed.
@@ -59,6 +63,10 @@ jobs:
       - name: Run smoke test
         run: npm run smoke
 
+      # Auth is npm trusted publishing (OIDC) — the id-token below is exchanged for a
+      # short-lived npm token, so no NPM_TOKEN secret exists. The trusted publisher is
+      # registered against this repo *and this filename*: renaming publish.yml breaks it.
+      # Provenance is attested automatically under trusted publishing.
       # Skipping an already-published version keeps re-runs of a failed job safe.
       - name: Publish package to npm
         run: |
@@ -66,10 +74,8 @@ jobs:
           if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
             echo "$NAME@$VERSION is already on npm — skipping publish."
           else
-            npm publish --provenance --access public
+            npm publish --access public
           fi
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Install mcp-publisher
         run: |

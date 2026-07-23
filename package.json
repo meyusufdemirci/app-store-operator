@@ -1,6 +1,6 @@
 {
   "name": "app-store-operator",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "mcpName": "io.github.meyusufdemirci/app-store-operator",
   "description": "Free App Store competitive intelligence for Claude — rival downloads, revenue, and ASO keywords.",
   "homepage": "https://app-store-operator.com",
