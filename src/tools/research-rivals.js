@@ -78,10 +78,13 @@ export async function execute({ keyword, country }) {
 
   if (!isLoggedIn) {
     // Keep browser open so the user can log in — do NOT close context
-    return JSON.stringify({
-      error: "not_logged_in",
-      message: "SensorTower requires login. A browser window has been opened and navigated to SensorTower. Please log in and then call research_rivals again to continue.",
-    });
+    return {
+      isError: true,
+      text: JSON.stringify({
+        error: "not_logged_in",
+        message: "SensorTower requires login. A browser window has been opened and navigated to SensorTower. Please log in and then call research_rivals again to continue.",
+      }),
+    };
   }
 
   await checkPage.close();
