@@ -16,6 +16,25 @@ Format: one `## <version>` section per release, newest first. Group lines under
 
 <!-- Add lines here as you go; rename this heading to the version when you cut a release. -->
 
+### Added
+
+- Six prompts — ready-made workflows that already chain the tools, so you no
+  longer have to describe the sequence yourself. In Claude Code they show up as
+  slash commands: `competitor_snapshot` (how contested is this keyword),
+  `keyword_shortlist` (which keywords are worth targeting), `app_teardown` (what
+  is this rival actually doing), `positioning_gap` (where your app stands against
+  the incumbents), `metadata_rewrite` (name, subtitle, and keyword field with
+  character counts), and `in_app_event` (the full In-App Event flow). Each one
+  tells the assistant not to invent figures, and the ones that scrape tell it not
+  to quietly swap in a weaker tool when SensorTower asks for a login.
+- Resources your client can attach as context without spending a tool call:
+  App Store Connect character limits, In-App Event limits and artwork sizes, the
+  locales `prepare_iae` accepts, storefront country codes, and a guide to which
+  tool costs what. Two more read the local cache — `asops://cache/research` lists
+  every keyword you have already researched and whether it is still fresh, and
+  `asops://cache/research/{country}/{keyword}` hands back a cached result without
+  opening a browser. Nothing here leaves your machine.
+
 ### Changed
 
 - Every tool now says up front what it costs you before you call it. The two

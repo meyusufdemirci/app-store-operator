@@ -12,9 +12,11 @@ Plain ESM Node (`"type": "module"`), no build step, no linter. Node ≥ 18. The 
 
 ```
 src/
-├── index.js              # MCP server: registers tools, dispatches CallTool
+├── index.js              # MCP server: registers tools/prompts/resources, dispatches requests
 ├── shared.js             # App Store lookup + Playwright/SensorTower scraping
 ├── cache.js              # 24h JSON file cache (research_rivals only)
+├── prompts.js            # six prompt workflows (prompts/list, prompts/get)
+├── resources.js          # asops:// reference data + cache resources
 └── tools/
     ├── research-rivals.js
     ├── search-app-store.js
@@ -37,6 +39,24 @@ Every file in `src/tools/` default-exports `{ tool, execute }`:
 To add a tool: create the file, then import it and append it to the `tools` array in `src/index.js:11`. Registration and dispatch are derived from that array — nothing else to touch.
 
 The `description` field is the real prompt. Trigger phrases, output shape, and post-processing instructions for the client all live there (see `prepare-iae.js`, whose description drives the entire 3-variation workflow). Behaviour changes usually mean editing a description, not code.
+
+## Prompts
+
+`src/prompts.js` exports `prompts`, an array of `{ prompt, render }`. `prompt` is the MCP descriptor (`name`, `title`, `description`, `arguments`); `render(args)` returns the **user message text** — `index.js` wraps it into `messages` for `prompts/get`.
+
+Prompt arguments are always strings; the protocol has no other type. `render()` is therefore the only place that normalises them, and it must tolerate every argument being absent — a client may call `prompts/get` with no arguments at all to preview a prompt. The `trim`/`splitList` helpers at the top of the file exist for that, and each render substitutes a visible `<placeholder>` rather than emitting `undefined`.
+
+Two shared clauses, `LOGIN_NOTE` and `NO_INVENTION`, are appended to the prompts they apply to. They are the counterweight to this server's two failure modes: an assistant quietly falling back to `search_app_store` when SensorTower wants a login (returning a weaker answer than was asked for), and an assistant filling `"N/A"` fields with plausible numbers. Keep them on any new prompt that touches a scraping tool.
+
+To add a prompt: append it to the `prompts` array — `index.js` derives registration and dispatch from that array. Add its name to `expectedPrompts` in the smoke test.
+
+## Resources
+
+`src/resources.js` exports `resources` (static descriptors), `resourceTemplates`, and `readResource(uri)`. Everything is under the `asops://` scheme.
+
+`readResource` **throws** on an unknown, malformed, or missing URI rather than returning empty contents — an empty read looks like real data to a model, an error does not. The internal `STATIC_RESOURCES` array carries a `read()` per entry, stripped off before export so the descriptor list never leaks a function.
+
+Two resources are generated rather than written out, so they cannot drift from the code they describe: `iae-locales` comes from `prepare-iae.js`'s exported `LOCALE_MAP`, and the two cache resources read `~/.app-store-operator/cache.json` on every request. `asops://cache/research` lists expired entries too — knowing a keyword was researched is useful even when the data is stale — while the `asops://cache/research/{country}/{keyword}` template goes through `getCached()` and so returns an error once the TTL is up.
 
 ## SensorTower scraping
 
@@ -147,6 +167,35 @@ Generates iOS App Store In-App Event (IAE) copy — 3 variations in the target l
 After the tool returns the brief, generate 3 copy variations and ask the user to pick one, then present the output table and final report.
 
 ---
+
+---
+
+## Prompts
+
+Six workflows that chain the tools above. Prefer one of these over improvising a tool sequence when the user's request matches.
+
+| Prompt | Arguments | Use when |
+| --- | --- | --- |
+| `competitor_snapshot` | `keyword`, `country` | "How competitive is this keyword?" — analytics plus a read on who owns it |
+| `keyword_shortlist` | `seed_keyword`, `country`, `count?` | "Which keywords should I target?" — expand a seed, test each, rank them |
+| `app_teardown` | `app_ids`, `country` | "What is this app doing?" — deep read on apps whose IDs you already have |
+| `positioning_gap` | `keyword`, `country`, `my_app_id` | "Where do I stand?" — your app against the incumbents on one keyword |
+| `metadata_rewrite` | `app_name`, `keyword`, `country`, `must_keep?` | "Rewrite my listing" — name, subtitle, and keyword field with character counts |
+| `in_app_event` | `event_context`, `locale`, `keywords?`, `audience?`, `tone?` | "Prepare an IAE" — collects what `prepare_iae` needs, then runs the flow |
+
+## Resources
+
+| URI | Contents |
+| --- | --- |
+| `asops://guide/tool-selection` | Which tool to use, what each costs, how the login works |
+| `asops://reference/country-codes` | Two-letter storefront codes by region |
+| `asops://reference/aso-fields` | App Store Connect limits and which fields are indexed |
+| `asops://reference/iae-fields` | In-App Event limits, artwork sizes, copy rules |
+| `asops://reference/iae-locales` | Locales `prepare_iae` accepts |
+| `asops://cache/research` | What is already cached on this machine |
+| `asops://cache/research/{country}/{keyword}` | One cached result, no re-scrape |
+
+Read `aso-fields` before writing App Store metadata and `iae-fields` before writing event copy — take the character limits from the server rather than from memory. Check `asops://cache/research` before a `research_rivals` call if you want to know whether it will hit the cache.
 
 ## Tool Selection Guide
 

@@ -1,4 +1,6 @@
-const LOCALE_MAP = {
+// Exported so the `asops://reference/iae-locales` resource is generated from the
+// same table execute() validates against, and can never drift from it.
+export const LOCALE_MAP = {
   "en-us":   { appleCode: "en-US",   language: "English",              country: "United States", store: "US" },
   "en-gb":   { appleCode: "en-GB",   language: "English",              country: "United Kingdom", store: "GB" },
   "de":      { appleCode: "de-DE",   language: "German",               country: "Germany",        store: "DE" },

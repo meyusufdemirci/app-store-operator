@@ -6,6 +6,7 @@
   <a href="#license"><img src="https://img.shields.io/badge/license-MIT-green" alt="license"></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%E2%89%A518-brightgreen" alt="node"></a>
   <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-compatible-6366f1" alt="MCP"></a>
+  <a href="https://lobehub.com/mcp/meyusufdemirci-app-store-operator"><img src="https://lobehub.com/badge/mcp/meyusufdemirci-app-store-operator" alt="MCP Badge"></a>
 </p>
 
 **App Store competitive intelligence, inside Claude.**
@@ -102,6 +103,37 @@ Generates iOS App Store In-App Event (IAE) copy — 3 variations in the target l
 | `tone` | string | Copy tone: `Engaging`, `Playful`, `Motivational`, `Authoritative`, `Calm`, or `Urgent` |
 
 **Returns:** a structured brief used to generate 3 copy variations, each with event name (≤30 chars), short description (≤50 chars), and long description (≤120 chars).
+
+## Prompts
+
+Six ready-made workflows that already chain the tools above, so you don't have to describe the sequence yourself. In Claude Code they appear as slash commands; other clients surface them in a prompt picker.
+
+| Prompt | Arguments | What it does |
+|--------|-----------|--------------|
+| `competitor_snapshot` | `keyword`, `country` | Pulls rival analytics for a keyword, then reads out who owns it and how contested it is |
+| `keyword_shortlist` | `seed_keyword`, `country`, `count?` | Expands a seed keyword into candidates, tests each against live search results, and ranks them *attack / watch / skip* |
+| `app_teardown` | `app_ids`, `country` | Teardown of known apps — scale, standing, monetisation, reach, momentum, acquisition |
+| `positioning_gap` | `keyword`, `country`, `my_app_id` | Puts your app on the same measuring stick as the incumbents and separates *behind* from *attackable* |
+| `metadata_rewrite` | `app_name`, `keyword`, `country`, `must_keep?` | Three name / subtitle / keyword-field variations, character-counted against Apple's limits |
+| `in_app_event` | `event_context`, `locale`, `keywords?`, `audience?`, `tone?` | Runs the full In-App Event flow, asking for whatever `prepare_iae` still needs |
+
+Arguments marked `?` are optional. Every prompt tells the assistant not to invent figures and, where SensorTower is involved, not to quietly fall back to a weaker tool when login is required.
+
+## Resources
+
+Reference data and local state a client can attach as context without spending a tool call on it.
+
+| URI | Type | Contents |
+|-----|------|----------|
+| `asops://guide/tool-selection` | markdown | Which tool to use, what each costs, how the SensorTower login works |
+| `asops://reference/country-codes` | markdown | Two-letter storefront codes by region |
+| `asops://reference/aso-fields` | JSON | App Store Connect character limits and which fields are indexed for search |
+| `asops://reference/iae-fields` | JSON | In-App Event limits, artwork sizes, copy rules, keyword tiers |
+| `asops://reference/iae-locales` | JSON | Every locale `prepare_iae` accepts — generated from the same table the tool validates against |
+| `asops://cache/research` | JSON | What has already been researched on this machine, and whether it is still fresh |
+| `asops://cache/research/{country}/{keyword}` | JSON | One cached `research_rivals` result, without re-scraping |
+
+Nothing here leaves your machine: the reference resources are static, and the two cache resources read `~/.app-store-operator/cache.json`.
 
 ## Requirements
 
@@ -207,6 +239,8 @@ src/
 ├── index.js                    # MCP server setup and request handlers
 ├── shared.js                   # App Store lookup + SensorTower scraping
 ├── cache.js                    # 24h local cache (research_rivals only)
+├── prompts.js                  # the six prompt workflows
+├── resources.js                # reference data + cache resources
 └── tools/
     ├── research-rivals.js      # research_rivals tool
     ├── search-app-store.js     # search_app_store tool
@@ -218,7 +252,7 @@ test/smoke-test-mcp.js          # stdio smoke test
 
 ## Development
 
-Run the smoke test to verify the server boots and exposes every tool over stdio — it checks `initialize` (including server instructions) and `tools/list`:
+Run the smoke test to verify the server boots and exposes everything over stdio — it checks `initialize` (including server instructions), `tools/list`, `prompts/list`, `prompts/get`, `resources/list`, `resources/templates/list`, and reads every resource, failing if one declared as JSON does not parse:
 
 ```bash
 npm run smoke
