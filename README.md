@@ -35,6 +35,10 @@ from SensorTower — downloads, revenue, ratings, top markets, publisher info, a
 `get_app_details` open a browser once for a **free** SensorTower sign-in, then reuse that
 saved session — no paid plan, no API key.
 
+Everything the server exposes — four tools, six prompts, seven resources — is read-only.
+Nothing writes to your App Store Connect account, to SensorTower, or anywhere but a local
+cache file.
+
 ## Tools
 
 ### `research_rivals`
@@ -49,10 +53,13 @@ Finds the top 3 apps for a keyword and returns a full metrics report for each.
 **Returns for each competitor:**
 - App Store & SensorTower URLs
 - Worldwide and last-month downloads & revenue
-- Rating score
+- Rating score and rating count
 - Publisher, categories, top markets
 - Release date, last updated, supported languages
 - In-app purchases and ad network presence
+
+Cached for 24 hours, so asking again about the same keyword and country costs nothing and
+opens no browser.
 
 ---
 
@@ -81,10 +88,12 @@ Fetches SensorTower analytics for one or more app IDs you already have.
 
 **Returns for each app:**
 - Downloads and revenue (worldwide + last month)
-- Rating score
+- Rating score and rating count
 - Publisher, categories, top markets
 - Release date, last updated, supported languages
 - In-app purchases and ad network presence
+
+Never cached — every call scrapes fresh, at roughly 10–20 seconds per app ID.
 
 ---
 
@@ -103,6 +112,12 @@ Generates iOS App Store In-App Event (IAE) copy — 3 variations in the target l
 | `tone` | string | Copy tone: `Engaging`, `Playful`, `Motivational`, `Authoritative`, `Calm`, or `Urgent` |
 
 **Returns:** a structured brief used to generate 3 copy variations, each with event name (≤30 chars), short description (≤50 chars), and long description (≤120 chars).
+
+---
+
+Any field SensorTower does not expose, or keeps behind its paywall, comes back as `N/A`.
+The server reports the gap rather than filling it, and the prompts below tell the assistant
+to do the same.
 
 ## Prompts
 
@@ -137,7 +152,14 @@ Nothing here leaves your machine: the reference resources are static, and the tw
 
 ## Requirements
 
-- Node.js v18+
+- **Node.js v18+**
+- **A desktop session** for `research_rivals` and `get_app_details`. They drive a real,
+  visible Chromium window so you can sign in to SensorTower, so they need a display —
+  they do not work over plain SSH or inside a container. The other two tools have no
+  such requirement.
+- **Disk space for Chromium.** Installing the package downloads a Playwright Chromium
+  build (a few hundred MB) via a postinstall step. If that step fails, the server installs
+  it on first use instead; you can also run `npx playwright install chromium` yourself.
 
 ## Usage
 
@@ -190,17 +212,52 @@ No installation step needed — `npx` fetches and runs the package automatically
 
 The server communicates over stdio and is designed to be invoked by an MCP client. It advertises server-wide `instructions` during `initialize` so clients route between the tools correctly, and returns an MCP tool error when SensorTower login is required.
 
+### Configuration
+
+Both settings are optional environment variables on the server process.
+
+| Variable | Default | What it does |
+|----------|---------|--------------|
+| `ASO_CACHE_TTL_HOURS` | `24` | How long a `research_rivals` result stays fresh in the local cache before it is scraped again |
+| `ASO_DEBUG_RATINGS` | unset | Set to `1` to print SensorTower's ratings panel to stderr when a rating score or count comes back `N/A` — useful when reporting a scraping bug |
+
+### In a container
+
+The repo ships a Dockerfile built on Playwright's official image:
+
+```bash
+docker build -t app-store-operator .
+docker run -i --rm app-store-operator
+```
+
+The server speaks JSON-RPC over stdio, so no port is exposed — point your MCP client at
+the container's stdin/stdout. Note that a container has no display: `search_app_store`
+and `prepare_iae` work there, but the two SensorTower tools cannot open a login window and
+will fail rather than prompting you to sign in.
+
 ## How it works
 
-1. Queries the iTunes Search API for the top 3 apps matching the keyword and country
+1. Searches the App Store for the keyword and country, and looks up any app IDs you passed
+   directly against Apple's public iTunes Lookup API
 2. For each app, drives a Chromium browser to scrape SensorTower analytics
-3. Extracts metrics and returns a compiled plain-text report
+3. Extracts the metrics and returns a compiled report
 
 SensorTower data is scraped via Playwright because it is rendered client-side.
 
 **A browser window will open.** This is deliberate, not a bug: SensorTower requires a login, so the first run opens a visible window for you to sign in. The session is saved to `~/.app-store-operator/profile` and reused on every later call, so you only log in once. If a tool reports `not_logged_in`, finish signing in on that window and run the tool again.
 
 Results from `research_rivals` are cached for 24 hours in `~/.app-store-operator/cache.json` — override the TTL with the `ASO_CACHE_TTL_HOURS` environment variable.
+
+## Limitations
+
+- **iOS only.** Nothing here covers Google Play or Android.
+- **Read-only.** No tool changes anything in App Store Connect or on SensorTower.
+- **`research_rivals` is fixed at the top 3 results.** Use `search_app_store` (up to 25)
+  and then `get_app_details` when you need a wider set.
+- **Scraping is brittle by nature.** SensorTower renders its dashboard client-side and
+  changes its markup without notice; when it does, affected fields return `N/A` until the
+  selectors are updated. A single app failing never fails the whole call.
+- **SensorTower's free tier decides what you see.** Paywalled figures come back as `N/A`.
 
 ## Privacy Policy
 
@@ -247,13 +304,37 @@ src/
     ├── get-app-details.js      # get_app_details tool
     └── prepare-iae.js          # prepare_iae tool
 scripts/postinstall.js          # installs Playwright Chromium on install
+scripts/sync-version.js         # keeps server.json and manifest.json on package.json's version
 test/smoke-test-mcp.js          # stdio smoke test
+server.json                     # MCP registry manifest
+manifest.json                   # Claude Desktop / MCPB bundle manifest
+Dockerfile                      # container build (no display: search + IAE tools only)
 ```
 
 ## Development
 
-Run the smoke test to verify the server boots and exposes everything over stdio — it checks `initialize` (including server instructions), `tools/list`, `prompts/list`, `prompts/get`, `resources/list`, `resources/templates/list`, and reads every resource, failing if one declared as JSON does not parse:
+No build step and no linter — clone it, `npm install`, and run `npm start` to boot the
+server over stdio.
+
+The smoke test verifies the server boots and exposes everything it should. It checks
+`initialize` (including the server instructions and the advertised version), `tools/list`,
+`prompts/list`, `prompts/get`, `resources/list`, `resources/templates/list`, and reads
+every resource, failing if one declared as JSON does not parse. It makes no network calls
+and opens no browser:
 
 ```bash
 npm run smoke
 ```
+
+Releases are tag-driven: rename the `## Unreleased` heading in `CHANGELOG.md` to the new
+version, run `npm version <patch|minor|major>` — which syncs the version into `server.json`
+and `manifest.json` for you — then push with `--follow-tags`. GitHub Actions runs the smoke
+test, publishes to npm and the MCP registry, and creates the release from that changelog
+section.
+
+Contributions are welcome — open an issue or a pull request at
+[github.com/meyusufdemirci/app-store-operator](https://github.com/meyusufdemirci/app-store-operator).
+
+## License
+
+MIT © Yusuf Demirci

@@ -8,7 +8,13 @@ Two audiences for this file: the **Codebase** section below is for working *on* 
 
 # Codebase
 
-Plain ESM Node (`"type": "module"`), no build step, no linter. Node ≥ 18. The only test is a stdio smoke test (`npm run smoke`).
+Plain ESM Node (`"type": "module"`), no build step, no linter, no transpiler. Node ≥ 18. The only test is a stdio smoke test (`npm run smoke`).
+
+Three runtime dependencies, and each one is load-bearing:
+
+- `@modelcontextprotocol/sdk` — the **low-level** `Server` class plus raw request schemas, not the `McpServer` helper. Handlers are registered by schema in `src/index.js`.
+- `playwright` — drives the SensorTower scrape. Installed browsers are the reason `postinstall` exists.
+- `app-store-scraper` — App Store keyword search.
 
 ```
 src/
@@ -23,11 +29,28 @@ src/
     ├── get-app-details.js
     └── prepare-iae.js
 scripts/postinstall.js    # installs Playwright Chromium on npm install
-test/smoke-test-mcp.js    # boots the server over stdio, asserts initialize + tools/list
+scripts/sync-version.js   # release-time version fan-out; never published to npm
+test/smoke-test-mcp.js    # boots the server over stdio and exercises every surface
+package.json              # npm package + the single source of truth for the version
+server.json               # MCP registry manifest (carries the version twice)
+manifest.json             # MCPB/Claude Desktop bundle manifest (carries the version once)
+icon.png                  # bundle icon, referenced by manifest.json
+glama.json                # claims maintainership of the Glama listing
 Dockerfile                # Playwright base image; for the Glama listing + container runs
+CHANGELOG.md              # hand-written release notes; the workflow reads these verbatim
+.npmrc                    # tag-version-prefix= — tags are bare, not v-prefixed
+.github/workflows/publish.yml
 ```
 
-`test/` is deliberately outside `package.json`'s `files` allowlist so the smoke test is not published to npm.
+`test/` is deliberately outside `package.json`'s `files` allowlist so the smoke test is not published to npm. `scripts/sync-version.js` is excluded the same way, via a negated entry.
+
+## Server wiring
+
+`src/index.js` derives everything from three arrays — `tools`, `prompts`, `resources` — so adding a surface is an append, never a new handler.
+
+It also owns `SERVER_INSTRUCTIONS`, the server-wide `instructions` string returned during `initialize`. That is the only routing guidance a client gets before it has read any tool description, so it carries the tool-selection rules, the `not_logged_in` retry rule, and pointers to the prompts and resources. **The smoke test asserts its opening line** (`"Use this server for iOS App Store competitor research"`) — rewrite the paragraph freely, but keep that phrase or update the test with it.
+
+The advertised server version is read from `package.json` at startup, so nothing in `src/` tracks a version number.
 
 ## Tool module contract
 
@@ -36,9 +59,11 @@ Every file in `src/tools/` default-exports `{ tool, execute }`:
 - `tool` — the MCP tool descriptor (`name`, `title`, `description`, `inputSchema`, `annotations`). All four tools are read-only, so every one carries `readOnlyHint: true`; `openWorldHint` is `true` for the three that reach the App Store or SensorTower and `false` for `prepare_iae`. `title` is deliberately set twice — once at the top level (current spec) and once inside `annotations` (the back-compat slot older clients and directory crawlers still read). Both are required by the Claude plugin/MCPB review and feed Glama's Tool Definition Quality score, so new tools must carry them too.
 - `execute(args)` — resolves to **either a string or `{ text, isError }`**. Neither shape is serialized for you, so JSON-returning tools call `JSON.stringify(..., null, 2)` themselves. A bare string becomes a successful `{ type: "text" }` result; return the object form to flag a failure (`isError: true`) while still handing the client a readable payload — that's how the two scraping tools surface `not_logged_in`. Anything else is coerced to a generic tool error.
 
-To add a tool: create the file, then import it and append it to the `tools` array in `src/index.js:11`. Registration and dispatch are derived from that array — nothing else to touch.
+Nothing validates `args` at runtime beyond the client's own schema enforcement — `inputSchema` is the whole guard, which is why the schemas carry `pattern`, `enum`, `minLength`, and `minItems` rather than leaving inputs open.
 
-The `description` field is the real prompt. Trigger phrases, output shape, and post-processing instructions for the client all live there (see `prepare-iae.js`, whose description drives the entire 3-variation workflow). Behaviour changes usually mean editing a description, not code.
+To add a tool: create the file, then import it and append it to the `tools` array in `src/index.js:26`. Registration and dispatch are derived from that array — nothing else to touch. Add its name to `expected` in the smoke test, and to `manifest.json`'s hand-written `tools` list.
+
+The `description` field is the real prompt. Trigger phrases, cost disclosure, output shape, and post-processing instructions for the client all live there (see `prepare-iae.js`, whose description drives the entire 3-variation workflow). Behaviour changes usually mean editing a description, not code.
 
 ## Prompts
 
@@ -58,13 +83,17 @@ To add a prompt: append it to the `prompts` array — `index.js` derives registr
 
 Two resources are generated rather than written out, so they cannot drift from the code they describe: `iae-locales` comes from `prepare-iae.js`'s exported `LOCALE_MAP`, and the two cache resources read `~/.app-store-operator/cache.json` on every request. `asops://cache/research` lists expired entries too — knowing a keyword was researched is useful even when the data is stale — while the `asops://cache/research/{country}/{keyword}` template goes through `getCached()` and so returns an error once the TTL is up.
 
+To add a resource: append to `STATIC_RESOURCES` and add its URI to `expectedResources` in the smoke test, which reads every one and fails if something declared `application/json` does not parse.
+
 ## SensorTower scraping
 
-`shared.js` drives a **non-headless** persistent Chromium context (`launchPersistentContext`, `headless: false`) rooted at `~/.app-store-operator/profile`. Non-headless is deliberate — the first run needs a visible window for the user to log in, and the session then persists in that profile.
+`shared.js` drives a **non-headless** persistent Chromium context (`launchPersistentContext`, `headless: false`) rooted at `~/.app-store-operator/profile`. Non-headless is deliberate — the first run needs a visible window for the user to log in, and the session then persists in that profile. It also means the two scraping tools need a real desktop session: no display, no scrape.
 
 Flow used by both scraping tools: `launchContext()` → `checkIsLoggedIn()` → on failure return `{"error": "not_logged_in"}` **without closing the context** (the open window is how the user logs in) → otherwise scrape and `context.close()` in a `finally`.
 
-Scraping is selector-brittle by nature. `scrapeSensorTower` reads KPI cards via `div[class*="CardKpi-module__card"]`, stats via `div[class*="BaseStatistic-module__statistic"]`, ratings via `.MuiRating-root`'s `aria-label`, and falls back to regex over `document.body.innerText` for the rest. Per-app failures are swallowed and replaced with `EMPTY_ST` (all `"N/A"`), so a partial result never fails the whole call. If a field starts returning `"N/A"` across the board, SensorTower changed its markup.
+`research_rivals` opens one page per app and scrapes all three concurrently; `get_app_details` reuses a single page and walks the IDs in sequence, which is why its cost scales linearly with the number of IDs.
+
+Scraping is selector-brittle by nature. `scrapeSensorTower` reads KPI cards via `div[class*="CardKpi-module__card"]` (taking the value from `span.MuiTypography-h1`, not the card's subtitle text), stats via `div[class*="BaseStatistic-module__statistic"]`, ratings via `.MuiRating-root`'s `aria-label`, and falls back to regex over `document.body.innerText` for the rest. Per-app failures are swallowed and replaced with `EMPTY_ST` (all `"N/A"`), so a partial result never fails the whole call. If a field starts returning `"N/A"` across the board, SensorTower changed its markup.
 
 `launchContext()` self-heals a missing browser by shelling out to `npx playwright install chromium`.
 
@@ -72,11 +101,41 @@ Scraping is selector-brittle by nature. `scrapeSensorTower` reads KPI cards via 
 
 `cache.js` writes `~/.app-store-operator/cache.json`, keyed `country:keyword` (both lowercased). TTL is 24h, overridable with the `ASO_CACHE_TTL_HOURS` env var. Only `research_rivals` reads/writes it — `get_app_details` always scrapes fresh.
 
+There is no invalidation beyond the TTL and no schema version on the file, so a cache written by an older scraper is still served for up to 24h after an upgrade, and is listed by `asops://cache/research` indefinitely.
+
 ## Data sources
 
 - `search_app_store` and `searchAppStore()` use the `app-store-scraper` package.
 - `lookupAppsByIds()` hits the iTunes Lookup API directly over `fetch` (no scraper dependency).
 - Everything downloads/revenue-related comes from the SensorTower scrape.
+
+## Environment variables
+
+| Variable | Read by | Effect |
+| --- | --- | --- |
+| `ASO_CACHE_TTL_HOURS` | `cache.js` | Cache lifetime in hours, default 24. Also declared in `manifest.json`'s `user_config` and `server.json`'s `environmentVariables` — changing its meaning means editing those too. |
+| `ASO_DEBUG_RATINGS` | `shared.js` | When set, dumps the Ratings and Reviews panel text to **stderr** if the score or count comes back empty. stdout is the JSON-RPC channel — never log there. |
+
+## Smoke test
+
+`npm run smoke` boots `src/index.js` over stdio with the real SDK client and asserts, in order: the `initialize` response carries the server instructions; the advertised version matches `package.json`; all four tools are listed; all six prompts are listed; `prompts/get` for `competitor_snapshot` actually interpolates its arguments (a broken `render()` shows up nowhere else); all six static resources and the cache template are listed; and every static resource reads back non-empty, with anything declared `application/json` parsing.
+
+It makes no network calls and opens no browser, which is why CI can run it after `npm ci --ignore-scripts`.
+
+## Packaging surfaces
+
+The same server is described in four places, for four different consumers. They drift silently, so know which is which:
+
+| File | Consumer | Notes |
+| --- | --- | --- |
+| `package.json` | npm | Source of truth for the version. `mcpName` must equal `server.json`'s `name`. |
+| `server.json` | MCP registry | Carries the version **twice** (`version`, `packages[0].version`). |
+| `manifest.json` | MCPB bundle / Claude Desktop | Carries the version once, plus its own hand-written `tools` list and `user_config`. Adding or renaming a tool means editing that list by hand — nothing generates it. |
+| `Dockerfile` | Glama listing, container runs | Base image tag must be bumped by hand alongside the `playwright` dependency (currently both 1.59.1). |
+
+`app-store-operator.mcpb` is a build artifact and is gitignored (`*.mcpb`). Packing it zips the whole working tree — source, docs, `icon.png`, and `node_modules` (≈37 MB unpacked) — and embeds the current `manifest.json`, so re-pack it *after* a version bump, never before.
+
+The container is a reduced build on purpose: with no display, `launchContext()` throws on the first call instead of returning `not_logged_in`, so only `search_app_store` and `prepare_iae` work there. The Dockerfile's comment explains why `xvfb-run` is not the fix — the copy in the Playwright base image swallows stdin, and a SensorTower login is impossible in a container anyway.
 
 ## Release
 
@@ -88,20 +147,25 @@ npm version patch    # or minor / major / an explicit 0.3.2
 git push github development --follow-tags
 ```
 
-`npm version` bumps `package.json`, then the `version` lifecycle script runs `scripts/sync-version.js`, which copies that version into the **two** slots `server.json` carries it in (`version` and `packages[0].version`) and `git add`s the file so it lands in the same commit. The commit and the tag are created for you; `.npmrc` sets `tag-version-prefix=` so the tag is a bare `0.3.2`, not `v0.3.2`. Never edit the three version fields by hand — the sync script is the only writer.
+`npm version` bumps `package.json`, then the `version` lifecycle script runs `scripts/sync-version.js`, which copies that version into the **three** downstream slots — `server.json`'s `version` and `packages[0].version`, and `manifest.json`'s `version` — and the lifecycle script then `git add`s both files so they land in the same commit. The commit and the tag are created for you; `.npmrc` sets `tag-version-prefix=` so the tag is a bare `0.3.2`, not `v0.3.2`. Never edit those four version fields by hand — `package.json` is the input and the sync script is the only other writer. Any new file carrying a version has to be added to `sync-version.js`; one left out drifts silently, which is how the LobeHub listing ended up four releases behind.
 
-`server.json` is the MCP registry manifest; `mcpName` in `package.json` must match its `name`. Published npm files are limited to `src` and `scripts`, minus `scripts/sync-version.js` (release-time only).
+Publishing is then automated by `.github/workflows/publish.yml`, triggered by the tag. The workflow refuses to continue unless `package.json`'s version and both of `server.json`'s match the tag (and `mcpName` matches `server.json`'s `name`), runs the smoke test, publishes to npm, registers `server.json` with the MCP registry, and finally creates the GitHub release. **`manifest.json`'s version is synced but never verified** — the MCPB bundle is not part of the tagged pipeline, so a drifted manifest fails nothing and ships wrong.
 
-`src/index.js` reads its advertised server version from `package.json` at startup, so nothing else tracks the version.
+Release notes are **not** generated from commit subjects — they're the `CHANGELOG.md` section whose heading exactly matches the tag (`## 0.3.3`), copied verbatim into the release body. That file is written for users of the tools, not for whoever touched the CI. If the section is missing the workflow logs a warning and falls back to `--generate-notes`, which dumps raw commit subjects into a public release — treat that fallback as a bug, not a workflow. Adding a release therefore means renaming `## Unreleased` before running `npm version`; unlike the version fields, this one is hand-written on purpose.
 
-Publishing is then automated by `.github/workflows/publish.yml`, triggered by the tag. The workflow refuses to continue unless all three match the tag (and `mcpName` matches `server.json`'s `name`), runs the smoke test, publishes to npm, registers `server.json` with the MCP registry, and finally creates the GitHub release.
+Both publishes authenticate over GitHub OIDC and **no repository secrets are required**: npm uses trusted publishing (registered on npmjs.com against this repo + the `publish.yml` filename — renaming the workflow breaks it), and the MCP registry proves the `io.github.meyusufdemirci/*` namespace from the token's repo claim. Re-running a failed job is safe: an already-published npm version is skipped, and so is an existing GitHub release.
 
-Release notes are **not** generated from commit subjects — they're the `CHANGELOG.md` section whose heading exactly matches the tag (`## 0.3.3`), copied verbatim into the release body. That file is written for users of the tools, not for whoever touched the CI. If the section is missing the workflow logs a warning and falls back to `--generate-notes`, which dumps raw commit subjects into a public release — treat that fallback as a bug, not a workflow. Adding a release therefore means renaming `## Unreleased` before running `npm version`; unlike the version fields, this one is hand-written on purpose. Both publishes authenticate over GitHub OIDC and **no repository secrets are required**: npm uses trusted publishing (registered on npmjs.com against this repo + the `publish.yml` filename — renaming the workflow breaks it), and the MCP registry proves the `io.github.meyusufdemirci/*` namespace from the token's repo claim. Re-running a failed job is safe: an already-published npm version is skipped.
+Published npm files are limited to `src` and `scripts`, minus `scripts/sync-version.js` (release-time only).
 
 ## Known gaps
 
-- `rating.count` is now wired up — `scrapeSensorTower` reads it from the Ratings and Reviews panel text after clicking the tab, because the count is not in `.MuiRating-root`'s `aria-label` (only the score is) and the `text` capture further up predates the click. **The patterns are unverified against live SensorTower**: they were written against the shapes the panel is expected to use (`1,234 Ratings`, `Total Ratings 12.3K`, `Ratings: 987`) and unit-tested against those, but nobody has yet confirmed them on a logged-in run. Run `ASO_DEBUG_RATINGS=1` and call `research_rivals` — if either field comes back `"N/A"` the panel text is dumped to stderr, which is enough to correct the patterns in one pass. Until a real run confirms it, treat the populated `"count"` in the `research_rivals` and `get_app_details` example JSON as aspirational.
-- `rating.score` may be broken too, independently of the above: every entry in a `~/.app-store-operator/cache.json` from May 2026 has `{"score": "N/A", "count": "N/A"}`, which points at either selector drift on `.MuiRating-root` or the tab click timing out. The same `ASO_DEBUG_RATINGS=1` run answers this.
+**The scrape has not been confirmed against a live logged-in SensorTower session since the 2026-05-10 selector rework.** Everything below follows from that.
+
+- The on-disk cache is not evidence about the current scraper, in either direction. Every entry in `~/.app-store-operator/cache.json` was written on 2026-04-21 — before the rework — which is why they all carry `"downloads": "by Sensor Tower"` (the KPI card's subtitle, captured instead of the value; the `span.MuiTypography-h1` selector that fixes this landed afterwards) and `{"score": "N/A", "count": "N/A"}` for ratings (the Ratings and Reviews tab click did not exist yet). Those entries are long past the 24h TTL so nothing serves them — they surface only in the `asops://cache/research` index — but do not read them as a report on today's code.
+- `rating.count` is wired up: `scrapeSensorTower` reads it from the Ratings and Reviews panel text after clicking the tab, because the count is not in `.MuiRating-root`'s `aria-label` (only the score is) and the `text` capture further up predates the click. **The patterns are unverified against live SensorTower** — they were written against the shapes the panel is expected to use (`1,234 Ratings`, `Total Ratings 12.3K`, `Ratings: 987`) and never confirmed on a real run.
+- `rating.score` may fail independently of that, through selector drift on `.MuiRating-root` or the tab click timing out.
+- One `ASO_DEBUG_RATINGS=1` run of `research_rivals` settles all three: if either field comes back `"N/A"` the panel text is dumped to stderr, which is enough to correct the patterns in one pass. Until then, treat the populated `downloads`, `revenue`, and `"count"` values in the `research_rivals` and `get_app_details` example JSON as aspirational.
+- `manifest.json`'s version is unchecked by CI (see Release), and its `tools` list is maintained by hand.
 
 ---
 
@@ -149,7 +213,7 @@ Fetches SensorTower analytics for one or more app IDs you already have (e.g. fro
 - You already have app IDs and only need analytics for a subset of them
 - You want to avoid re-scraping apps you don't need
 
-**Required inputs:** `app_ids` (array of numeric App Store IDs) + `country`.
+**Required inputs:** `app_ids` (array of numeric App Store IDs, passed as strings) + `country`. Nothing here is cached, and each ID adds roughly 10–20 seconds.
 
 ---
 
@@ -210,3 +274,7 @@ Read `aso-fields` before writing App Store metadata and `iae-fields` before writ
 ## SensorTower Login
 
 `research_rivals` and `get_app_details` both scrape SensorTower. On first use, a browser window opens for the user to log in. The session is saved to a persistent profile directory and reused automatically on every subsequent call. If a tool returns `"error": "not_logged_in"`, ask the user to log in via the opened browser and then call the tool again.
+
+Both tools need a real desktop session for that window. On a headless machine or inside a container they fail outright rather than returning `not_logged_in` — use `search_app_store` there.
+
+Fields SensorTower does not expose, or gates behind a paywall, come back as `"N/A"`. Report those as missing data; never substitute an estimate.
