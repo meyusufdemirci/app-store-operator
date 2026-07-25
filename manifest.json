@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "app-store-operator",
   "display_name": "App Store Operator",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Free App Store competitive intelligence for Claude — rival downloads, revenue, and ASO keywords.",
   "long_description": "App Store Operator brings iOS App Store competitive research into Claude. Search the App Store for ranked keyword results, pull download and revenue estimates for competing apps, and generate App Store Connect-ready In-App Event copy — without leaving the conversation.\n\nFour read-only tools. Two of them (`search_app_store` and `prepare_iae`) need no account at all. The two analytics tools (`research_rivals` and `get_app_details`) open a browser once for a **free** SensorTower sign-in and reuse the saved session — free account, no paid plan, no API key.\n\nBuilt for indie iOS developers. Apple App Store only; Google Play is not supported.",
   "author": {
