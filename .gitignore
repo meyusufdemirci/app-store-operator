@@ -1,1 +1,4 @@
 node_modules/
+
+# Packed MCPB bundles — build artifacts for Smithery / Claude Desktop submissions
+*.mcpb

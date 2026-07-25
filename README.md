@@ -170,6 +170,36 @@ SensorTower data is scraped via Playwright because it is rendered client-side.
 
 Results from `research_rivals` are cached for 24 hours in `~/.app-store-operator/cache.json` — override the TTL with the `ASO_CACHE_TTL_HOURS` environment variable.
 
+## Privacy Policy
+
+Full policy: **<https://app-store-operator.com/privacy>**
+
+App Store Operator runs entirely on your machine. There is no backend, no telemetry, and no analytics — the author collects, receives, and stores **nothing** about you or your usage.
+
+**What each tool sends, and where:**
+
+| Tool | Account | What leaves your machine |
+|---|---|---|
+| `search_app_store` | None | Keyword and country code → Apple's public App Store search |
+| `prepare_iae` | None | Nothing — pure local computation, contacts no external service |
+| `research_rivals` | Free SensorTower | Keyword and country code → Apple, then SensorTower via your own browser session |
+| `get_app_details` | Free SensorTower | App Store app IDs → Apple's public lookup API and SensorTower |
+
+**What is stored locally:**
+
+- `~/.app-store-operator/cache.json` — cached results, expiring after 24 hours by default (`ASO_CACHE_TTL_HOURS`)
+- `~/.app-store-operator/profile` — the Chromium profile holding your SensorTower session
+
+You type your SensorTower credentials into SensorTower's own page in a browser window on your machine. The server never reads or stores your password, and the author never receives it.
+
+**Deleting everything** — no request to the author, nothing to wait for:
+
+```bash
+rm -rf ~/.app-store-operator
+```
+
+Apple and SensorTower are independent third parties with their own policies. This project is not affiliated with either.
+
 ## Project structure
 
 ```

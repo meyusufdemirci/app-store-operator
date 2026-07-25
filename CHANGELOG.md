@@ -16,6 +16,26 @@ Format: one `## <version>` section per release, newest first. Group lines under
 
 <!-- Add lines here as you go; rename this heading to the version when you cut a release. -->
 
+## 0.3.3
+
+### Added
+
+- Every tool now has a display name and declares how it behaves. Clients that
+  support this show "Research App Store Rivals" rather than `research_rivals`,
+  and can tell that all four tools are read-only — none of them change anything
+  in your App Store account, on SensorTower, or on your machine beyond the local
+  cache. `prepare_iae` additionally declares that it contacts no external service
+  at all.
+- A privacy policy in the README: what each tool sends and to whom, what is
+  stored on your machine and where, and a one-line command to delete all of it.
+- Packaging metadata for Claude Desktop, so the server can be installed as a
+  desktop extension instead of being wired up by hand.
+
+### Fixed
+
+- `research_rivals` and `get_app_details` now report how many ratings an app has.
+  This was always `N/A` in earlier releases.
+
 ## 0.3.2
 
 Maintenance release — no changes to the tools or their output.
