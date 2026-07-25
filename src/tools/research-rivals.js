@@ -5,6 +5,9 @@ const DESCRIPTION = `Search the App Store for a keyword and fetch SensorTower an
 
 Use this for a quick competitive overview when you want everything in one step.
 Use \`search_app_store\` + \`get_app_details\` separately when you need more than 3 results, a custom limit, or selective fetching of specific apps.
+Do not use this for Google Play or Android apps — it covers the iOS App Store only.
+
+Requires a SensorTower account. On a cache miss the server opens a real Chromium window on the user's machine; the first run needs the user to log in there, and the session is reused from then on. If there is no session the call returns an error result carrying \`{"error": "not_logged_in"}\` and leaves the window open — tell the user to log in, then call again. A cache miss scrapes three apps and typically takes 30–60 seconds; a cache hit returns immediately and opens no browser.
 
 Trigger phrases: "rival research", "research rivals", "competitor analysis", "find competing apps", "check competitors", "what apps compete with", "App Store competitors", "rivals for keyword".
 
@@ -38,7 +41,7 @@ Returns JSON:
 }
 \`\`\`
 
-Fields missing or gated behind a paywall will be \`"N/A"\`. When \`cached\` is \`true\`, the data was served from the local cache and no scraping occurred.
+Fields missing or gated behind a paywall will be \`"N/A"\`. A single app failing to scrape is not fatal — that app comes back with \`"N/A"\` fields rather than failing the whole call. When \`cached\` is \`true\`, the data was served from the local cache and no scraping occurred.
 
 Present results as a clean report for each app:
 
@@ -122,10 +125,12 @@ export default {
       properties: {
         keyword: {
           type: "string",
+          minLength: 1,
           description: "The keyword to search in the App Store (e.g. psikoloji, meditation)",
         },
         country: {
           type: "string",
+          pattern: "^[A-Za-z]{2}$",
           description: "Two-letter App Store country code (e.g. us, gb, tr)",
         },
       },

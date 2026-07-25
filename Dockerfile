@@ -18,4 +18,12 @@ COPY src/ ./src/
 COPY scripts/ ./scripts/
 
 # The MCP server speaks JSON-RPC over stdio — no port is exposed.
+#
+# Do not wrap this in `xvfb-run`: the copy in the Playwright base image hangs
+# before it ever runs the command, so the server never sees a byte of stdin
+# (`echo x | docker run -i --entrypoint xvfb-run <image> -a cat` prints nothing).
+# The scraping tools therefore have no display here — `launchContext()` throws on
+# the first call instead of returning `not_logged_in`. That costs nothing in
+# practice, since a SensorTower login is impossible in a container anyway;
+# `search_app_store` and `prepare_iae` are the two tools that work in this image.
 ENTRYPOINT ["node", "src/index.js"]

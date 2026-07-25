@@ -4,6 +4,9 @@ const DESCRIPTION = `Fetch SensorTower analytics for one or more App Store app I
 
 Use this when you already have app IDs (e.g. from \`search_app_store\`) and want detailed analytics for only a subset of them — avoiding unnecessary scrapes for apps you don't need.
 Use \`research_rivals\` instead for a single convenience call that searches and fetches analytics together.
+Do not use this for Google Play or Android apps — it takes numeric iOS App Store IDs only.
+
+Requires a SensorTower account. The server opens a real Chromium window on the user's machine; the first run needs the user to log in there, and the session is reused from then on. If there is no session the call returns an error result carrying \`{"error": "not_logged_in"}\` and leaves the window open — tell the user to log in, then call again. Results are never cached, so every call scrapes fresh and costs roughly 10–20 seconds per app ID.
 
 Returns JSON:
 \`\`\`json
@@ -33,7 +36,7 @@ Returns JSON:
 }
 \`\`\`
 
-Fields missing or gated behind a paywall will be \`"N/A"\`.`;
+Fields missing or gated behind a paywall will be \`"N/A"\`. A single app failing to scrape is not fatal — that app comes back with \`"N/A"\` fields rather than failing the whole call.`;
 
 export async function execute({ app_ids, country }) {
   const entries = await lookupAppsByIds(app_ids, country);
@@ -85,11 +88,13 @@ export default {
       properties: {
         app_ids: {
           type: "array",
-          items: { type: "string" },
-          description: "List of numeric App Store app IDs (e.g. [\"123456\", \"789012\"])",
+          items: { type: "string", pattern: "^[0-9]+$" },
+          minItems: 1,
+          description: "List of numeric App Store app IDs, as strings (e.g. [\"123456\", \"789012\"]). Each is the digits from an apps.apple.com URL's `id` segment, without the `id` prefix.",
         },
         country: {
           type: "string",
+          pattern: "^[A-Za-z]{2}$",
           description: "Two-letter App Store country code (e.g. us, gb, tr)",
         },
       },

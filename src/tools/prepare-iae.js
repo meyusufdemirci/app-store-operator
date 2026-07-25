@@ -27,6 +27,9 @@ const DESCRIPTION = `Prepare an iOS App Store In-App Event (IAE) — generate co
 
 Use this when the user wants to create or draft an in-app event, prepare IAE metadata, or generate App Store event copy.
 Accepts user-supplied keywords and event parameters, then returns a structured brief.
+Do not use it for ordinary App Store listing metadata (title, subtitle, description) — it covers In-App Event fields only.
+
+Runs entirely locally: no network calls, no App Store or SensorTower lookup, and no keyword research of its own — the caller supplies the keywords (reach for \`research_rivals\` or \`search_app_store\` first if you still need to find them). Returns immediately.
 
 **After receiving the tool output, you MUST:**
 1. Generate **3 distinct copy variations** in the target language (from \`locale.language\`), each differing meaningfully in angle, tone, or keyword emphasis. For each variation produce:
@@ -148,12 +151,16 @@ export default {
       properties: {
         keywords: {
           type: "array",
-          items: { type: "string" },
+          items: { type: "string", minLength: 1 },
+          minItems: 1,
+          maxItems: 10,
           description: "Ordered list of keywords by priority (index 0–2 = Tier 1 must-use, 3–6 = Tier 2, 7–9 = Tier 3). Maximum 10.",
         },
         locale: {
           type: "string",
-          description: "Target locale/language for the IAE copy (e.g. en-us, en-gb, de-de, fr-fr, tr, ja, ko, zh-hans).",
+          // Derived from LOCALE_MAP so the schema can never drift from what execute() accepts.
+          enum: Object.keys(LOCALE_MAP),
+          description: "Target locale/language for the IAE copy (e.g. en-us, en-gb, de-de, fr-fr, tr, ja, ko, zh-hans). An unlisted value returns an `unknown_locale` error naming the supported ones.",
         },
         event_purpose: {
           type: "string",

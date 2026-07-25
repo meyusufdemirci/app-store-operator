@@ -16,6 +16,19 @@ Format: one `## <version>` section per release, newest first. Group lines under
 
 <!-- Add lines here as you go; rename this heading to the version when you cut a release. -->
 
+### Changed
+
+- Every tool now says up front what it costs you before you call it. The two
+  SensorTower tools state that they need an account, open a real browser window,
+  and roughly how long a scrape takes; `search_app_store` states that it needs
+  none of that but also carries no downloads or revenue figures; `prepare_iae`
+  states that it never touches the network. Each tool also says which store it
+  covers, so an assistant stops offering them for Android apps.
+- Inputs now carry their own limits: country codes must be two letters, app IDs
+  must be numeric, `limit` is a whole number between 1 and 25, and `locale`
+  lists the locales that actually work instead of leaving you to discover the
+  unsupported ones by getting an error back.
+
 ## 0.3.3
 
 ### Added

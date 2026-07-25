@@ -5,8 +5,11 @@ const DESCRIPTION = `Search the App Store for a keyword and return ranked result
 Use this when you want to discover which apps rank for a keyword before deciding which ones to analyse in depth.
 - Follow up with \`get_app_details\` to fetch SensorTower analytics for specific app IDs.
 - Use \`research_rivals\` instead for a single convenience call that searches and fetches analytics together.
+- Do not use this for Google Play or Android apps — it covers the iOS App Store only.
 
-Returns a markdown table with all available App Store fields for each result.`;
+Unlike \`research_rivals\` and \`get_app_details\`, this needs no SensorTower account, opens no browser window, and returns in about a second. It also carries no downloads or revenue figures — those only come from the SensorTower tools.
+
+Returns markdown (not JSON): one table per result, ranked, with every App Store field available including the numeric app ID that \`get_app_details\` takes. Unavailable fields read \`"N/A"\`. A keyword with no matches returns just the header line and no tables.`;
 
 function formatApps(apps) {
   const escape = (s) => String(s).replace(/\|/g, "\\|");
@@ -66,15 +69,20 @@ export default {
       properties: {
         keyword: {
           type: "string",
+          minLength: 1,
           description: "The keyword to search in the App Store (e.g. meditation, psikoloji)",
         },
         country: {
           type: "string",
+          pattern: "^[A-Za-z]{2}$",
           description: "Two-letter App Store country code (e.g. us, gb, tr)",
         },
         limit: {
-          type: "number",
-          description: "Number of results to return (1–25, default 3)",
+          type: "integer",
+          minimum: 1,
+          maximum: 25,
+          default: 3,
+          description: "Number of results to return (1–25, default 3). Values above 25 are clamped to 25.",
         },
       },
       required: ["keyword", "country"],
