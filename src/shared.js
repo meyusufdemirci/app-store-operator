@@ -125,11 +125,46 @@ export async function scrapeSensorTower(page, appId, country) {
     const ratingData = await page.evaluate(() => {
       const ratingEl = document.querySelector(".MuiRating-root");
       const ariaLabel = ratingEl?.getAttribute("aria-label") ?? "";
-      const scoreMatch = ariaLabel.match(/^(\d+\.?\d*)\s*Stars?/i);
-      return { score: scoreMatch ? scoreMatch[1] : null };
+      const scoreMatch = ariaLabel.match(/(\d+\.?\d*)\s*Stars?/i);
+      const score = scoreMatch ? scoreMatch[1] : null;
+
+      // The count is not in the aria-label, and the pre-click innerText capture
+      // above predates this panel — so re-read the text here. Several shapes are
+      // tried because this markup has drifted before.
+      const panelText = document.body.innerText;
+      const NUM = String.raw`\d[\d,.]*\s*[KMB]?`;
+      const patterns = [
+        new RegExp(`(${NUM})\\s*(?:total\\s+)?ratings\\b`, "i"),
+        new RegExp(`total\\s+ratings\\D{0,20}(${NUM})`, "i"),
+        new RegExp(`\\bratings\\b\\s*[:\\n]\\s*(${NUM})`, "i"),
+      ];
+
+      let count = null;
+      for (const pattern of patterns) {
+        const value = panelText.match(pattern)?.[1]?.trim();
+        // Guard against re-capturing the score itself out of e.g. "4.7 Ratings".
+        if (value && value !== score) {
+          count = value;
+          break;
+        }
+      }
+
+      return { score, count, ariaLabel, foundRatingEl: Boolean(ratingEl), sample: panelText.slice(0, 1500) };
     });
     rating = ratingData.score ?? "N/A";
-  } catch {}
+    ratingCount = ratingData.count ?? "N/A";
+
+    // Set ASO_DEBUG_RATINGS=1 to dump what the page actually offered when either
+    // field comes back empty. stderr is safe here — stdout is the JSON-RPC channel.
+    if (process.env.ASO_DEBUG_RATINGS && (rating === "N/A" || ratingCount === "N/A")) {
+      console.error(
+        "[aso:ratings] incomplete extraction",
+        JSON.stringify({ score: rating, count: ratingCount, ariaLabel: ratingData.ariaLabel, foundRatingEl: ratingData.foundRatingEl, sample: ratingData.sample }, null, 2),
+      );
+    }
+  } catch (err) {
+    if (process.env.ASO_DEBUG_RATINGS) console.error("[aso:ratings] Ratings and Reviews tab unreachable:", err.message);
+  }
   const extract = (pattern) => {
     const match = text.match(pattern);
     return match ? match[1].trim() : "N/A";

@@ -115,6 +115,7 @@ export async function execute({ keyword, country }) {
 export default {
   tool: {
     name: "research_rivals",
+    title: "Research App Store Rivals",
     description: DESCRIPTION,
     inputSchema: {
       type: "object",
@@ -129,6 +130,11 @@ export default {
         },
       },
       required: ["keyword", "country"],
+    },
+    annotations: {
+      title: "Research App Store Rivals",
+      readOnlyHint: true,
+      openWorldHint: true,
     },
   },
   execute,

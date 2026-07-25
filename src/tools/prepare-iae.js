@@ -141,6 +141,7 @@ export async function execute({ keywords, locale, event_purpose, audience, event
 export default {
   tool: {
     name: "prepare_iae",
+    title: "Prepare In-App Event Copy",
     description: DESCRIPTION,
     inputSchema: {
       type: "object",
@@ -177,6 +178,12 @@ export default {
         },
       },
       required: ["keywords", "locale", "event_purpose", "audience", "event_context", "goal", "tone"],
+    },
+    annotations: {
+      title: "Prepare In-App Event Copy",
+      readOnlyHint: true,
+      // Pure local computation — unlike the other three tools this one reaches no external service.
+      openWorldHint: false,
     },
   },
   execute,

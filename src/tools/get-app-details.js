@@ -78,6 +78,7 @@ export async function execute({ app_ids, country }) {
 export default {
   tool: {
     name: "get_app_details",
+    title: "Get App Analytics",
     description: DESCRIPTION,
     inputSchema: {
       type: "object",
@@ -93,6 +94,11 @@ export default {
         },
       },
       required: ["app_ids", "country"],
+    },
+    annotations: {
+      title: "Get App Analytics",
+      readOnlyHint: true,
+      openWorldHint: true,
     },
   },
   execute,

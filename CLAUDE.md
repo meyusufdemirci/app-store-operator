@@ -31,7 +31,7 @@ Dockerfile                # Playwright base image; for the Glama listing + conta
 
 Every file in `src/tools/` default-exports `{ tool, execute }`:
 
-- `tool` — the MCP tool descriptor (`name`, `description`, `inputSchema`).
+- `tool` — the MCP tool descriptor (`name`, `title`, `description`, `inputSchema`, `annotations`). All four tools are read-only, so every one carries `readOnlyHint: true`; `openWorldHint` is `true` for the three that reach the App Store or SensorTower and `false` for `prepare_iae`. `title` is deliberately set twice — once at the top level (current spec) and once inside `annotations` (the back-compat slot older clients and directory crawlers still read). Both are required by the Claude plugin/MCPB review and feed Glama's Tool Definition Quality score, so new tools must carry them too.
 - `execute(args)` — resolves to **either a string or `{ text, isError }`**. Neither shape is serialized for you, so JSON-returning tools call `JSON.stringify(..., null, 2)` themselves. A bare string becomes a successful `{ type: "text" }` result; return the object form to flag a failure (`isError: true`) while still handing the client a readable payload — that's how the two scraping tools surface `not_logged_in`. Anything else is coerced to a generic tool error.
 
 To add a tool: create the file, then import it and append it to the `tools` array in `src/index.js:11`. Registration and dispatch are derived from that array — nothing else to touch.
@@ -80,7 +80,8 @@ Release notes are **not** generated from commit subjects — they're the `CHANGE
 
 ## Known gaps
 
-- `rating.count` is always `"N/A"` — `scrapeSensorTower` declares `ratingCount` at `src/shared.js:121` and never assigns it (the `page.evaluate` block below it only parses the score out of the `aria-label`). The README no longer advertises a count, but the `research_rivals` and `get_app_details` tool descriptions still show a populated `"count"` in their example JSON. Fixing the scraper is the real resolution; until then those examples overpromise.
+- `rating.count` is now wired up — `scrapeSensorTower` reads it from the Ratings and Reviews panel text after clicking the tab, because the count is not in `.MuiRating-root`'s `aria-label` (only the score is) and the `text` capture further up predates the click. **The patterns are unverified against live SensorTower**: they were written against the shapes the panel is expected to use (`1,234 Ratings`, `Total Ratings 12.3K`, `Ratings: 987`) and unit-tested against those, but nobody has yet confirmed them on a logged-in run. Run `ASO_DEBUG_RATINGS=1` and call `research_rivals` — if either field comes back `"N/A"` the panel text is dumped to stderr, which is enough to correct the patterns in one pass. Until a real run confirms it, treat the populated `"count"` in the `research_rivals` and `get_app_details` example JSON as aspirational.
+- `rating.score` may be broken too, independently of the above: every entry in a `~/.app-store-operator/cache.json` from May 2026 has `{"score": "N/A", "count": "N/A"}`, which points at either selector drift on `.MuiRating-root` or the tab click timing out. The same `ASO_DEBUG_RATINGS=1` run answers this.
 
 ---
 

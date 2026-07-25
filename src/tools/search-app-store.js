@@ -59,6 +59,7 @@ export async function execute({ keyword, country, limit = 3 }) {
 export default {
   tool: {
     name: "search_app_store",
+    title: "Search the App Store",
     description: DESCRIPTION,
     inputSchema: {
       type: "object",
@@ -77,6 +78,11 @@ export default {
         },
       },
       required: ["keyword", "country"],
+    },
+    annotations: {
+      title: "Search the App Store",
+      readOnlyHint: true,
+      openWorldHint: true,
     },
   },
   execute,
