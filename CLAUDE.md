@@ -139,19 +139,22 @@ The container is a reduced build on purpose: with no display, `launchContext()` 
 
 ## Release
 
-Cutting a release is two steps — write the notes, then tag:
+Cutting a release is two steps — write the notes under `## Unreleased` as you go, then tag:
 
 ```
-# 1. rename CHANGELOG.md's "## Unreleased" heading to the version you're about to cut
 npm version patch    # or minor / major / an explicit 0.3.2
 git push github development --follow-tags
 ```
 
-`npm version` bumps `package.json`, then the `version` lifecycle script runs `scripts/sync-version.js`, which copies that version into the **three** downstream slots — `server.json`'s `version` and `packages[0].version`, and `manifest.json`'s `version` — and the lifecycle script then `git add`s both files so they land in the same commit. The commit and the tag are created for you; `.npmrc` sets `tag-version-prefix=` so the tag is a bare `0.3.2`, not `v0.3.2`. Never edit those four version fields by hand — `package.json` is the input and the sync script is the only other writer. Any new file carrying a version has to be added to `sync-version.js`; one left out drifts silently, which is how the LobeHub listing ended up four releases behind.
+`npm version` bumps `package.json`, then the `version` lifecycle script runs `scripts/sync-version.js`, which copies that version into the **three** downstream slots — `server.json`'s `version` and `packages[0].version`, and `manifest.json`'s `version` — and renames `CHANGELOG.md`'s `## Unreleased` heading to the same version, leaving a fresh empty `## Unreleased` above it. The lifecycle script then `git add`s all three files so they land in the same commit. The commit and the tag are created for you; `.npmrc` sets `tag-version-prefix=` so the tag is a bare `0.3.2`, not `v0.3.2`. Never edit those four version fields or the released heading by hand — `package.json` is the input and the sync script is the only other writer. Any new file carrying a version has to be added to `sync-version.js`; one left out drifts silently, which is how the LobeHub listing ended up four releases behind.
+
+The `version` hook can do that because it fires *after* the bump but *before* the commit — anything it `git add`s is folded into the release commit the tag points at. `postversion` is too late: the tag already exists, the workflow checks out the tag's tree, and a changelog edit made there would not be in it.
+
+`preversion` runs `sync-version.js --check`, which validates the changelog and writes nothing. It fails when `## Unreleased` is missing or holds only its placeholder comment, and because `preversion` runs *before* the bump, that failure leaves the working tree untouched — no half-bumped `package.json` to reset. `sync-version.js` also refuses to promote onto a `## <version>` heading that already exists.
 
 Publishing is then automated by `.github/workflows/publish.yml`, triggered by the tag. The workflow refuses to continue unless `package.json`'s version and both of `server.json`'s match the tag (and `mcpName` matches `server.json`'s `name`), runs the smoke test, publishes to npm, registers `server.json` with the MCP registry, and finally creates the GitHub release. **`manifest.json`'s version is synced but never verified** — the MCPB bundle is not part of the tagged pipeline, so a drifted manifest fails nothing and ships wrong.
 
-Release notes are **not** generated from commit subjects — they're the `CHANGELOG.md` section whose heading exactly matches the tag (`## 0.3.3`), copied verbatim into the release body. That file is written for users of the tools, not for whoever touched the CI. If the section is missing the workflow logs a warning and falls back to `--generate-notes`, which dumps raw commit subjects into a public release — treat that fallback as a bug, not a workflow. Adding a release therefore means renaming `## Unreleased` before running `npm version`; unlike the version fields, this one is hand-written on purpose.
+Release notes are **not** generated from commit subjects — they're the `CHANGELOG.md` section whose heading exactly matches the tag (`## 0.3.3`), copied verbatim into the release body. That file is written for users of the tools, not for whoever touched the CI. If the section is missing the workflow logs a warning and falls back to `--generate-notes`, which dumps raw commit subjects into a public release — treat that fallback as a bug, not a workflow. That is what 0.3.4 shipped with, and the `preversion` check exists to stop it happening again: the *heading* is now mechanical, but the notes under it are still hand-written on purpose, and the check only proves something is there — not that it is worth reading.
 
 Both publishes authenticate over GitHub OIDC and **no repository secrets are required**: npm uses trusted publishing (registered on npmjs.com against this repo + the `publish.yml` filename — renaming the workflow breaks it), and the MCP registry proves the `io.github.meyusufdemirci/*` namespace from the token's repo claim. Re-running a failed job is safe: an already-published npm version is skipped, and so is an existing GitHub release.
 

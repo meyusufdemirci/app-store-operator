@@ -304,7 +304,7 @@ src/
     ├── get-app-details.js      # get_app_details tool
     └── prepare-iae.js          # prepare_iae tool
 scripts/postinstall.js          # installs Playwright Chromium on install
-scripts/sync-version.js         # keeps server.json and manifest.json on package.json's version
+scripts/sync-version.js         # syncs server.json, manifest.json and CHANGELOG.md on release
 test/smoke-test-mcp.js          # stdio smoke test
 server.json                     # MCP registry manifest
 manifest.json                   # Claude Desktop / MCPB bundle manifest
@@ -326,11 +326,12 @@ and opens no browser:
 npm run smoke
 ```
 
-Releases are tag-driven: rename the `## Unreleased` heading in `CHANGELOG.md` to the new
-version, run `npm version <patch|minor|major>` — which syncs the version into `server.json`
-and `manifest.json` for you — then push with `--follow-tags`. GitHub Actions runs the smoke
-test, publishes to npm and the MCP registry, and creates the release from that changelog
-section.
+Releases are tag-driven: write the notes under `## Unreleased` in `CHANGELOG.md`, run
+`npm version <patch|minor|major>` — which syncs the version into `server.json` and
+`manifest.json` and renames that heading to the new version for you — then push with
+`--follow-tags`. GitHub Actions runs the smoke test, publishes to npm and the MCP
+registry, and creates the release from that changelog section. The bump refuses to run
+while `## Unreleased` is empty.
 
 Contributions are welcome — open an issue or a pull request at
 [github.com/meyusufdemirci/app-store-operator](https://github.com/meyusufdemirci/app-store-operator).

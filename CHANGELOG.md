@@ -12,9 +12,15 @@ stranger to read it.
 Format: one `## <version>` section per release, newest first. Group lines under
 `### Added` / `### Changed` / `### Fixed` when a release has more than a couple.
 
+Write as you go under `## Unreleased`; `npm version` renames that heading to the
+version being cut and opens a fresh one. It refuses to run while the section is
+empty, so a release never ships with auto-generated commit subjects for notes.
+
 ## Unreleased
 
-<!-- Add lines here as you go; rename this heading to the version when you cut a release. -->
+<!-- Add lines here as you go; `npm version` promotes this heading to the version you cut. -->
+
+## 0.3.4
 
 ### Added
 

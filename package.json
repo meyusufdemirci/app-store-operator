@@ -25,7 +25,8 @@
     "start": "node src/index.js",
     "postinstall": "node scripts/postinstall.js",
     "smoke": "node test/smoke-test-mcp.js",
-    "version": "node scripts/sync-version.js && git add server.json manifest.json"
+    "preversion": "node scripts/sync-version.js --check",
+    "version": "node scripts/sync-version.js && git add server.json manifest.json CHANGELOG.md"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.10.2",
