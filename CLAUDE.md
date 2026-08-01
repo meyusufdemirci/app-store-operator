@@ -137,6 +137,21 @@ The same server is described in four places, for four different consumers. They 
 
 The container is a reduced build on purpose: with no display, `launchContext()` throws on the first call instead of returning `not_logged_in`, so only `search_app_store` and `prepare_iae` work there. The Dockerfile's comment explains why `xvfb-run` is not the fix — the copy in the Playwright base image swallows stdin, and a SensorTower login is impossible in a container anyway.
 
+## External listings
+
+Separate from the packaging surfaces above: directories that list the server. The question to ask about each is *what does it read*, because that decides whether it can drift.
+
+| Listing | Reads | Maintenance |
+| --- | --- | --- |
+| [MCP registry](https://registry.modelcontextprotocol.io) | `server.json`, pushed by `publish.yml` | None — the tagged workflow registers it. |
+| [Glama](https://glama.ai) | the repo: `glama.json`, `Dockerfile`, tool `title`/`annotations` | None per release, but the Dockerfile base image is a hand bump (see above) and the doubled `title` feeds its Tool Definition Quality score. |
+| [LobeHub](https://lobehub.com/mcp/meyusufdemirci-app-store-operator) | unconfirmed — not the README | This is the one that drifted four releases behind, so assume it needs a look after a release. `lobehub.com/mcp/…` now 302s to `market.lobehub.com/s/plugins/…`, which 403s to scripted fetches; the README's badge image and link both still resolve, so nothing is broken. |
+| [mcpservers.org](https://mcpservers.org/servers/meyusufdemirci/app-store-operator) | `README.md` at GitHub HEAD, live | None. |
+
+mcpservers.org is the cheapest of the four and the easiest to misfile as another thing to sync — it is not. The page embeds `githubInfo: {branch: "HEAD"}` and re-renders the README from the default branch, so a README push *is* the update; there is a **Request update** button beside the Documentation heading if one ever fails to propagate. It shows no version number, so it cannot drift out of step with a release. Only two fields live on their side rather than in the repo — the one-line tagline and the category (currently Marketing) — and those came from the original submission, so they are the only things that can go stale.
+
+**There is no mcpservers.org badge to add** — checked 2026-08-01: no badge endpoint exists, and `/submit`'s only badge is a $39 Premium Submit perk that puts a trust marker on *their* listing page (plus a dofollow link), not markup for this README. Declined; do not re-investigate.
+
 ## Release
 
 Cutting a release is two steps — write the notes under `## Unreleased` as you go, then tag:
