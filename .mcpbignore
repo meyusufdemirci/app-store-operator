@@ -1,0 +1,24 @@
+# Never pack a bundle into a bundle
+*.mcpb
+
+# VCS and tooling
+.git/
+.github/
+.claude/
+.npmrc
+.gitignore
+.mcpbignore
+
+# Not needed at runtime — the bundle is extracted, never npm-installed
+package-lock.json
+test/
+scripts/sync-version.js
+
+# Distribution metadata for other registries, not for the bundle
+glama.json
+server.json
+CHANGELOG.md
+
+# Internal — agent guidance and the Glama build spec, not end-user content
+CLAUDE.md
+Dockerfile
