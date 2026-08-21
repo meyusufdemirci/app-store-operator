@@ -9,6 +9,11 @@
   <a href="https://lobehub.com/mcp/meyusufdemirci-app-store-operator"><img src="https://lobehub.com/badge/mcp/meyusufdemirci-app-store-operator" alt="MCP Badge"></a>
 </p>
 
+<p align="center">
+  <img src="assets/hero.png" width="880"
+       alt="App Store intelligence, inside Claude — a free MCP server for iOS competitor research, installed with claude mcp add --transport stdio app-store-operator">
+</p>
+
 **App Store competitive intelligence, inside Claude.**
 
 App Store Operator is an MCP server that brings App Store research directly into your AI
@@ -26,6 +31,11 @@ claude mcp add --transport stdio app-store-operator -- npx -y app-store-operator
 
 → [app-store-operator.com](https://app-store-operator.com) · [Setup guide](#usage)
 
+<p align="center">
+  <img src="assets/how-it-works.png" width="880"
+       alt="Step 01 — add the server with one command. Step 02 — ask Claude in plain language. Step 03 — get downloads, revenue and ratings for the top 3 rivals.">
+</p>
+
 ## What it does
 
 Searches the App Store for competing apps on a given keyword and pulls detailed analytics
@@ -38,6 +48,15 @@ saved session — no paid plan, no API key.
 Everything the server exposes — four tools, six prompts, seven resources — is read-only.
 Nothing writes to your App Store Connect account, to SensorTower, or anywhere but a local
 cache file.
+
+<p align="center">
+  <img src="assets/output-preview.png" width="820"
+       alt="Example research_rivals output: App Store and SensorTower links, downloads, revenue, rating, publisher, categories, top markets, release date, languages and in-app purchases for the top-ranking app.">
+</p>
+
+<p align="center">
+  <sub>One of the three rivals <code>research_rivals</code> returns. Figures are illustrative — whatever SensorTower does not expose comes back as <code>N/A</code>.</sub>
+</p>
 
 ## Tools
 
@@ -306,6 +325,7 @@ src/
 scripts/postinstall.js          # installs Playwright Chromium on install
 scripts/sync-version.js         # syncs server.json, manifest.json and CHANGELOG.md on release
 test/smoke-test-mcp.js          # stdio smoke test
+assets/                         # README visuals, plus the HTML they are rendered from
 server.json                     # MCP registry manifest
 manifest.json                   # Claude Desktop / MCPB bundle manifest
 Dockerfile                      # container build (no display: search + IAE tools only)

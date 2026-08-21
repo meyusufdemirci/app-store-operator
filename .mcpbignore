@@ -22,3 +22,6 @@ CHANGELOG.md
 # Internal — agent guidance and the Glama build spec, not end-user content
 CLAUDE.md
 Dockerfile
+
+# README visuals — the rendered PNGs ship with the README, the markup they came from does not
+assets/src/

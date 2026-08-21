@@ -1,0 +1,63 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="tokens.css">
+<style>
+  .shot { width: 1000px; padding: 48px 0 52px; }
+  .aurora {
+    background:
+      radial-gradient(60% 45% at 50% 0%, var(--glow-accent), transparent 68%),
+      radial-gradient(40% 40% at 4% 60%, var(--glow-cool), transparent 70%),
+      radial-gradient(40% 40% at 96% 70%, var(--glow-accent-soft), transparent 70%);
+  }
+  .inner { max-width: 880px; margin: 0 auto; padding: 0 24px; }
+  .tl { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .bar-label { margin-left: 8px; font-family: var(--font-mono); font-size: 13px; color: var(--text-muted); }
+  .app-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
+  .rank { font-family: var(--font-mono); font-size: 14px; font-weight: 600; color: var(--text-primary); }
+  .rank-tag {
+    font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600;
+    color: var(--accent); background: rgba(99,102,241,0.14); border: 1px solid rgba(99,102,241,0.30);
+    border-radius: 999px; padding: 2px 9px;
+  }
+  .row { display: grid; grid-template-columns: 168px 1fr; padding: 9px 0; border-bottom: 1px solid var(--bg-border); }
+  .row:last-child { border-bottom: none; }
+  .k { font-size: 14px; font-weight: 500; color: var(--text-secondary); }
+  .v { font-family: var(--font-mono); font-size: 13px; color: var(--text-primary); }
+  .v.link { color: var(--code-string); }
+  .v.good { color: var(--success); }
+  .v.na { color: var(--text-muted); }
+</style></head>
+<body>
+<div class="shot" id="shot">
+  <div class="aurora"></div>
+  <div class="grid"></div>
+  <div class="content inner">
+    <div class="window">
+      <div class="window-bar">
+        <span class="tl" style="background:#FF5F57"></span>
+        <span class="tl" style="background:#FEBC2E"></span>
+        <span class="tl" style="background:#28C840"></span>
+        <span class="bar-label">Claude &mdash; research_rivals("meditation", "us")</span>
+      </div>
+      <div class="window-body" style="padding: 20px 24px 18px">
+        <div class="app-head">
+          <span class="rank">#1 &mdash; Calm</span>
+          <span class="rank-tag">Top result</span>
+        </div>
+        <div class="row"><span class="k">App Store</span><span class="v link">https://apps.apple.com/us/app/calm/id477428413</span></div>
+        <div class="row"><span class="k">SensorTower</span><span class="v link">https://app.sensortower.com/ios/us/calm/app/477428413</span></div>
+        <div class="row"><span class="k">Downloads</span><span class="v good">500K&ndash;1M / month</span></div>
+        <div class="row"><span class="k">Revenue</span><span class="v good">$5M&ndash;$10M / month</span></div>
+        <div class="row"><span class="k">Rating</span><span class="v">4.8 &middot; 312,445 ratings</span></div>
+        <div class="row"><span class="k">Publisher</span><span class="v">Calm.com, Inc.</span></div>
+        <div class="row"><span class="k">Categories</span><span class="v">Health &amp; Fitness</span></div>
+        <div class="row"><span class="k">Top Markets</span><span class="v">United States, United Kingdom, Canada</span></div>
+        <div class="row"><span class="k">Release Date</span><span class="v">Jan 30, 2012</span></div>
+        <div class="row"><span class="k">Last Updated</span><span class="v">Apr 10, 2026</span></div>
+        <div class="row"><span class="k">Languages</span><span class="v">English, Spanish, French, German (+12)</span></div>
+        <div class="row"><span class="k">IAPs</span><span class="v">Monthly &middot; $14.99 / Annual &middot; $69.99</span></div>
+        <div class="row"><span class="k">Ad Networks</span><span class="v na">N/A &mdash; not exposed</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>

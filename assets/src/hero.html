@@ -1,0 +1,84 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="tokens.css">
+<style>
+  .shot { width: 1200px; padding: 64px 0 56px; }
+  .aurora {
+    background:
+      radial-gradient(34% 26% at 50% 18%, var(--glow-accent-core), transparent 62%),
+      radial-gradient(80% 55% at 50% 2%, var(--glow-accent), transparent 66%),
+      radial-gradient(46% 30% at 50% 78%, var(--glow-accent-soft), transparent 70%),
+      radial-gradient(38% 40% at 4% 32%, var(--glow-cool), transparent 70%),
+      radial-gradient(36% 40% at 96% 42%, var(--glow-accent-soft), transparent 70%);
+  }
+  .inner { max-width: 860px; margin: 0 auto; padding: 0 24px; text-align: center; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--glass-bg-strong);
+    border: 1px solid var(--glass-border);
+    border-radius: 999px;
+    padding: 6px 15px 6px 12px;
+    font-size: 12px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--text-secondary);
+    box-shadow: inset 0 1px 0 var(--glass-highlight), var(--glass-shadow-sm);
+    margin-bottom: 26px;
+  }
+  .badge-dot {
+    width: 6px; height: 6px; border-radius: 999px; background: var(--accent);
+    box-shadow: 0 0 0 3px var(--glow-accent-soft), 0 0 10px var(--accent);
+  }
+  h1 {
+    font-size: 58px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.07;
+    background: linear-gradient(180deg, var(--text-primary) 42%, rgba(245,245,247,0.74) 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    margin-bottom: 20px;
+  }
+  .sub {
+    font-size: 18px; line-height: 1.6; color: var(--text-secondary);
+    max-width: 640px; margin: 0 auto 34px;
+  }
+  .sub strong { color: var(--text-primary); font-weight: 600; }
+  .terminal-wrap { position: relative; margin: 0 auto; max-width: 760px; }
+  .terminal-wrap::before {
+    content: ""; position: absolute; inset: -22% -8% -30% -8%; z-index: -1;
+    background: radial-gradient(62% 60% at 50% 38%, var(--glow-accent-strong), transparent 74%);
+    filter: blur(38px);
+  }
+  .term-body { padding: 20px 24px; font-family: var(--font-mono); font-size: 14px; line-height: 1.7; text-align: left; white-space: pre; }
+  .pills { display: flex; justify-content: center; gap: 10px; margin-top: 32px; flex-wrap: wrap; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: var(--glass-bg); border: 1px solid var(--glass-border);
+    border-radius: 999px; padding: 7px 14px;
+    font-size: 13px; font-weight: 500; color: var(--text-secondary);
+    box-shadow: inset 0 1px 0 var(--glass-highlight);
+  }
+  .pill b { color: var(--text-primary); font-weight: 600; }
+  .pill i { width: 6px; height: 6px; border-radius: 999px; display: inline-block; }
+</style></head>
+<body>
+<div class="shot" id="shot">
+  <div class="aurora"></div>
+  <div class="grid"></div>
+  <div class="content inner">
+    <span class="badge"><span class="badge-dot"></span>MCP Server &middot; npm</span>
+    <h1>App Store intelligence,<br>inside Claude.</h1>
+    <p class="sub"><strong>Free, open-source MCP server for iOS competitor research.</strong> Rival downloads, revenue, ratings and In-App Event copy — in the same conversation where you make the call.</p>
+    <div class="terminal-wrap">
+      <div class="window">
+        <div class="window-bar">
+          <span class="dot dot-glass"></span><span class="dot dot-glass"></span><span class="dot dot-glass"></span>
+          <span class="chip" style="margin-left:4px">Terminal</span>
+        </div>
+        <div class="window-body term-body"><span class="muted">$ </span><span class="kw">claude</span><span class="txt"> mcp add --transport stdio </span><span class="str">app-store-operator</span><span class="txt"> \</span>
+<span class="txt">    -- npx -y </span><span class="str">app-store-operator@latest</span></div>
+      </div>
+    </div>
+    <div class="pills">
+      <span class="pill"><i style="background:var(--accent)"></i><b>4</b> tools</span>
+      <span class="pill"><i style="background:var(--code-string)"></i><b>6</b> prompts</span>
+      <span class="pill"><i style="background:var(--success)"></i><b>7</b> resources</span>
+      <span class="pill"><i style="background:var(--iae)"></i>No API key &middot; read-only</span>
+    </div>
+  </div>
+</div>
+</body></html>

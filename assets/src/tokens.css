@@ -1,0 +1,138 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --bg-base:           #0A0A0A;
+  --bg-surface:        rgba(255, 255, 255, 0.045);
+  --bg-surface-raised: rgba(255, 255, 255, 0.075);
+  --bg-border:         rgba(255, 255, 255, 0.10);
+  --text-primary:      #F5F5F7;
+  --text-secondary:    #A1A1A6;
+  --text-muted:        #636366;
+  --accent:            #6366F1;
+  --success:           #34D399;
+  --iae:               #F59E0B;
+  --code-bg:           rgba(255, 255, 255, 0.035);
+  --code-text:         #E2E8F0;
+  --code-comment:      #636366;
+  --code-string:       #A5B4FC;
+  --code-keyword:      #818CF8;
+
+  --glass-bg:            rgba(255, 255, 255, 0.045);
+  --glass-bg-strong:     rgba(255, 255, 255, 0.085);
+  --glass-border:        rgba(255, 255, 255, 0.09);
+  --glass-border-strong: rgba(255, 255, 255, 0.17);
+  --glass-highlight:     rgba(255, 255, 255, 0.17);
+  --glass-sheen:         rgba(255, 255, 255, 0.07);
+  --glass-shadow:        0 30px 70px -28px rgba(0, 0, 0, 0.85);
+  --glass-shadow-sm:     0 10px 26px -14px rgba(0, 0, 0, 0.70);
+  --glow-accent:         rgba(99, 102, 241, 0.30);
+  --glow-accent-core:    rgba(129, 140, 248, 0.30);
+  --glow-accent-strong:  rgba(99, 102, 241, 0.50);
+  --glow-accent-soft:    rgba(99, 102, 241, 0.17);
+  --glow-cool:           rgba(56, 189, 248, 0.16);
+
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Menlo, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: transparent;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.shot {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: var(--bg-base);
+  border-radius: 18px;
+}
+
+/* Ambient light field, mirroring .hero-aurora / .app-ambience */
+.aurora {
+  position: absolute;
+  inset: -12%;
+  z-index: 0;
+  pointer-events: none;
+  filter: blur(14px);
+}
+
+.grid {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.55;
+  background-image:
+    linear-gradient(to right, var(--glass-border) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--glass-border) 1px, transparent 1px);
+  background-size: 64px 64px;
+  -webkit-mask-image: radial-gradient(76% 72% at 50% 38%, black, transparent 100%);
+  mask-image: radial-gradient(76% 72% at 50% 38%, black, transparent 100%);
+}
+
+.content { position: relative; z-index: 1; }
+
+.window {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--glass-bg-strong) 0%, var(--glass-bg) 100%);
+  box-shadow:
+    0 0 0 1px var(--glass-border),
+    inset 0 1px 0 var(--glass-highlight),
+    var(--glass-shadow);
+}
+
+.window::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 8%; right: 8%;
+  height: 1px;
+  z-index: 2;
+  background: linear-gradient(90deg, transparent, var(--glass-border-strong) 30%, var(--glass-highlight) 50%, var(--glass-border-strong) 70%, transparent);
+}
+
+.window::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(112deg, transparent 28%, var(--glass-sheen) 46%, transparent 62%);
+}
+
+.window-bar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--glass-border);
+  background: linear-gradient(180deg, var(--glass-sheen), transparent);
+}
+
+.window-body { position: relative; z-index: 1; }
+
+.dot { width: 10px; height: 10px; border-radius: 999px; flex-shrink: 0; }
+.dot-glass { background: var(--glass-border-strong); box-shadow: inset 0 1px 0 var(--glass-highlight); }
+
+.chip {
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.mono { font-family: var(--font-mono); }
+.kw { color: var(--code-keyword); }
+.str { color: var(--code-string); }
+.txt { color: var(--code-text); }
+.muted { color: var(--text-muted); }

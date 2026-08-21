@@ -31,6 +31,7 @@ src/
 scripts/postinstall.js    # installs Playwright Chromium on npm install
 scripts/sync-version.js   # release-time version fan-out; never published to npm
 test/smoke-test-mcp.js    # boots the server over stdio and exercises every surface
+assets/                   # README visuals (PNG) + assets/src, the markup they render from
 package.json              # npm package + the single source of truth for the version
 server.json               # MCP registry manifest (carries the version twice)
 manifest.json             # MCPB/Claude Desktop bundle manifest (carries the version once)
@@ -43,6 +44,8 @@ CHANGELOG.md              # hand-written release notes; the workflow reads these
 ```
 
 `test/` is deliberately outside `package.json`'s `files` allowlist so the smoke test is not published to npm. `scripts/sync-version.js` is excluded the same way, via a negated entry.
+
+`assets/` is outside the allowlist too, so the PNGs are never in the npm tarball — npm, Glama and the other listings resolve the README's relative image paths against GitHub instead.
 
 ## Server wiring
 
@@ -121,6 +124,18 @@ There is no invalidation beyond the TTL and no schema version on the file, so a 
 `npm run smoke` boots `src/index.js` over stdio with the real SDK client and asserts, in order: the `initialize` response carries the server instructions; the advertised version matches `package.json`; all four tools are listed; all six prompts are listed; `prompts/get` for `competitor_snapshot` actually interpolates its arguments (a broken `render()` shows up nowhere else); all six static resources and the cache template are listed; and every static resource reads back non-empty, with anything declared `application/json` parsing.
 
 It makes no network calls and opens no browser, which is why CI can run it after `npm ci --ignore-scripts`.
+
+## README visuals
+
+The three images at the top of the README — `assets/hero.png`, `assets/how-it-works.png`, `assets/output-preview.png` — are screenshots of HTML mockups, not hand-drawn art. The markup lives beside them in `assets/src/`, and `assets/src/tokens.css` is a copy of the design tokens from the marketing site (`../aso-fe/src/app/globals.css`): the same dark surfaces, indigo accent, glass panels and terminal chrome as `HeroSection`, `HowItWorksSection` and `OutputPreviewSection`. Change the site's look and these fall out of step — re-copy the tokens rather than eyeballing new colours.
+
+```
+node assets/src/render.mjs
+```
+
+That drives Playwright (already a dependency) over the three HTML files and writes the PNGs. Each is rendered at 1760px wide — 2× the ~880px GitHub renders a README at — by scaling the device pixel ratio rather than the layout, so the files stay near 2× rather than 4× the display size. They carry their own dark background and rounded corners, so they read the same in GitHub's light and dark themes.
+
+README image paths are **relative** (`assets/hero.png`) on purpose: GitHub resolves them on any branch, and npm and the directory listings resolve them against the repository. Absolute `raw.githubusercontent.com` links would break on every branch that is not yet merged to `main`.
 
 ## Packaging surfaces
 
