@@ -20,6 +20,15 @@ empty, so a release never ships with auto-generated commit subjects for notes.
 
 <!-- Add lines here as you go; `npm version` promotes this heading to the version you cut. -->
 
+- Nothing changed about the tools themselves. The four tools, six prompts and
+  seven resources behave exactly as they did in 0.3.4 — this release is the
+  install experience around them.
+- The Claude Desktop bundle is no longer the whole repository. Packing it used to
+  zip everything in the working tree, `node_modules` included, so the download
+  was many times the size of the server it installs. It now carries the server,
+  its manifest and icon, and the README — the tests, CI config, release script
+  and the metadata files meant for other registries are left out.
+
 ## 0.3.4
 
 ### Added
