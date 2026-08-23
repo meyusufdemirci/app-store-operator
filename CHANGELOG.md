@@ -20,6 +20,8 @@ empty, so a release never ships with auto-generated commit subjects for notes.
 
 <!-- Add lines here as you go; `npm version` promotes this heading to the version you cut. -->
 
+## 0.3.5
+
 - Nothing changed about the tools themselves. The four tools, six prompts and
   seven resources behave exactly as they did in 0.3.4 — this release is the
   install experience around them.
