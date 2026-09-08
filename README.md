@@ -7,6 +7,7 @@
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%E2%89%A518-brightgreen" alt="node"></a>
   <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-compatible-6366f1" alt="MCP"></a>
   <a href="https://lobehub.com/mcp/meyusufdemirci-app-store-operator"><img src="https://lobehub.com/badge/mcp/meyusufdemirci-app-store-operator" alt="MCP Badge"></a>
+  <a href="https://github.com/punkpeye/awesome-mcp-servers#marketing"><img src="https://awesome.re/mentioned-badge.svg" alt="Mentioned in Awesome MCP Servers"></a>
 </p>
 
 <p align="center">
